@@ -171,12 +171,34 @@ copied into the `serversideup/php:8.4-fpm-nginx` image alongside the SQLite file
 Sessions use cookies and the cache uses files, so there are no external service
 dependencies.
 
+### Prebuilt content artifact (recommended)
+
+Pushing a version tag rebuilds the SQLite manual from the latest upstream
+sources and attaches it to the GitHub Release (see
+[`.github/workflows/content-release.yml`](.github/workflows/content-release.yml)):
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+The release then carries `database.sqlite.gz` (+ `.sha256`). Install it anywhere
+with a single command — no clone of `php/doc-en` required:
+
+```bash
+php artisan docs:pull --force     # downloads, verifies and decompresses the artifact
+```
+
+`docs:pull` resolves the configured `DOCS_ARTIFACT_URL` (defaults to the "latest
+release" asset), verifies the sha256 when available, and writes
+`database/database.sqlite` atomically.
+
 ### Any PHP host / Laravel Cloud
 
-It's a standard Laravel 12 app. Build the SQLite file in CI (`docs:build`), ship
-it as part of the release, and serve with PHP-FPM + a web server. Run the
-scheduler (`php artisan schedule:run` every minute, or `schedule:work`) if you
-want the site to keep itself current with upstream automatically.
+It's a standard Laravel 12 app. Run `php artisan docs:pull --force` as a **build
+command** so the latest prebuilt SQLite ships with each deployment, then serve
+with PHP-FPM + a web server. Run the scheduler (`php artisan schedule:run` every
+minute, or `schedule:work`) if you want the site to keep itself current with
+upstream automatically.
 
 ---
 
