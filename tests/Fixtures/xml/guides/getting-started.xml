@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<article xml:id="getting-started" xmlns="http://docbook.org/ns/docbook">
+ <title>Getting Started with PHP</title>
+ <para>
+  This short guide walks through writing and running your first PHP script.
+ </para>
+</article>

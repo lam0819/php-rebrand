@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appendix xml:id="migration85" xmlns="http://docbook.org/ns/docbook">
+ <title>Migrating from PHP 8.4.x to PHP 8.5.x</title>
+ <para>This appendix lists the changes that may affect existing code.</para>
+</appendix>

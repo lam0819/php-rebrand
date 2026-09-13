@@ -1,0 +1,6 @@
+# Renderer implementations live here.
+#
+# This layer is intentionally empty in this PR. The DocumentRenderer contract
+# (app/Docs/Contracts/DocumentRenderer.php) is defined so that Markdown, HTML,
+# JSON, and LLM-context renderers can be added later as drop-in implementations
+# resolved by format — without changing the import pipeline.

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<chapter xml:id="control-structures" xmlns="http://docbook.org/ns/docbook">
+ <title>Control Structures</title>
+ <para>
+  Any PHP script is built out of statements. This chapter introduces the
+  control structures that direct the flow of execution.
+ </para>
+ <sect1 xml:id="control-structures.if">
+  <title>if</title>
+  <para>The <literal>if</literal> construct is one of the most important features.</para>
+ </sect1>
+</chapter>

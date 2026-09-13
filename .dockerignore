@@ -1,0 +1,28 @@
+# VCS / CI
+.git
+.github
+.gitignore
+
+# Dependencies (reinstalled inside the image)
+node_modules
+vendor
+
+# Local env & build artifacts (provided via compose / rebuilt in-image)
+.env
+.env.*
+public/build
+public/hot
+
+# Transient storage (recreated at runtime)
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/phpstan
+
+# Docs scratch / tooling
+*.md
+.phpunit.result.cache
+
+# NOTE: database/database.sqlite is intentionally NOT ignored — the populated
+# manual ships inside the image so the app works with no database server.

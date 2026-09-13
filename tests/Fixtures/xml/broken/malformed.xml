@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<refentry xml:id="broken">
+ <refnamediv>
+  <refname>broken_function</refname>
+  <refpurpose>An intentionally malformed document — the closing tag is missing.</refpurpose>
+ </refnamediv>
+<!-- no closing </refentry> on purpose, to exercise InvalidXmlException -->

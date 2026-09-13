@@ -1,0 +1,34 @@
+PHP                                                                        NEWS
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+?? ??? ????, PHP 8.5.9
+
+- Core:
+  . Fixed bug GH-22290 (AST pretty printing does not correctly handle strings
+    containing NUL). (iliaal)
+
+02 Jul 2026, PHP 8.5.8
+
+- Core:
+  . Fixed bug GH-22280 (Incorrect compile error for goto to label preceding
+    try/finally block). (Pratik Bhujel)
+
+- Standard:
+  . Fixed bug GH-22395 (base_convert() outputs at most 64 characters).
+    (Weilin Du)
+
+02 Jun 2026, PHP 8.5.7
+
+- CLI:
+  . Fixed bug GH-21901 (Stale getopt() optional value). (onthebed)
+
+- Core:
+  . Fixed bug GH-22071 (JIT assertion on abstract static method call).
+    (David Carlier)
+
+- URI:
+  . Fixed CVE-2026-44927 (URI parsing confusion). (Sebastian Pipping)
+
+07 May 2026, PHP 8.5.6
+
+- Date:
+  . Fixed bug GH-18422 (int overflow in php_date_llabs). (iliaal)

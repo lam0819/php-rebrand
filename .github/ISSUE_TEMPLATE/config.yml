@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Submit a pull request
+    url: https://github.com/lam0819/php-rebrand/pulls
+    about: Issues are disabled. Every contribution happens through a pull request.
+  - name: Contribution guide
+    url: https://github.com/lam0819/php-rebrand/blob/main/CONTRIBUTING.md
+    about: Read this before opening your first PR.

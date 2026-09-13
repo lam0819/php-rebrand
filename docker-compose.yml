@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+    image: php-rebrand
+    ports:
+      # host : container — the app is served at http://localhost:8088
+      # (container listens on 8080; change the host side if 8088 is taken)
+      - "8088:8080"
+    environment:
+      APP_NAME: "PHP Manual"
+      APP_ENV: production
+      APP_DEBUG: "false"
+      # Demo key — generate your own for production: php artisan key:generate --show
+      APP_KEY: "base64:4O67GvW0TKrom6uuvgV6ibzlp94pYLHHayvReTvzK1w="
+      APP_URL: "http://localhost:8080"
+
+      # Single source of truth: the manual ships as a read-only SQLite file.
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /var/www/html/database/database.sqlite
+
+      # No external services needed.
+      SESSION_DRIVER: cookie
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+      LOG_CHANNEL: stderr
+
+      # We ship a populated DB — don't migrate over it at boot.
+      AUTORUN_LARAVEL_MIGRATION: "false"
+    restart: unless-stopped
