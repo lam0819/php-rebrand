@@ -72,8 +72,10 @@ new class extends Component
     <div class="search-results show">
       @forelse ($this->results as $r)
         <a class="sr-item" href="/manual/{{ $r['slug'] }}" wire:navigate wire:key="{{ $r['slug'] }}">
-          <span class="sr-kind">{{ $r['kind'] }}</span>
-          <span class="sr-name">{{ $r['name'] }}</span>
+          <span class="sr-head">
+            <span class="sr-kind">{{ $r['kind'] }}</span>
+            <span class="sr-name">{{ $r['name'] }}</span>
+          </span>
           @if ($r['desc'])<span class="sr-desc">{{ $r['desc'] }}</span>@endif
         </a>
       @empty

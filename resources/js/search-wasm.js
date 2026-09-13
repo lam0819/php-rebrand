@@ -36,8 +36,9 @@ function escapeHtml(value) {
 function itemHtml(r) {
   const desc = r.purpose ? `<span class="sr-desc">${escapeHtml(r.purpose)}</span>` : '';
   return `<a class="sr-item" href="/manual/${encodeURIComponent(r.slug)}" wire:navigate>` +
+    `<span class="sr-head">` +
     `<span class="sr-kind" title="${escapeHtml(r.type)}">${escapeHtml(categoryLabel(r.type))}</span>` +
-    `<span class="sr-name">${escapeHtml(r.title)}</span>${desc}</a>`;
+    `<span class="sr-name">${escapeHtml(r.title)}</span></span>${desc}</a>`;
 }
 
 function render(container, results) {
