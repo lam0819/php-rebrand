@@ -2,29 +2,37 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "php-rebrand/docs-platform",
     "type": "project",
-    "description": "A modern, faithful rebrand of php.net — the manual, news, and downloads rendered from the official PHP source repositories.",
-    "keywords": ["laravel", "documentation", "pipeline", "php-manual", "docbook", "php.net", "livewire"],
+    "description": "A modern, faithful rebrand of php.net \u2014 the manual, news, and downloads rendered from the official PHP source repositories.",
+    "keywords": [
+        "laravel",
+        "documentation",
+        "pipeline",
+        "php-manual",
+        "docbook",
+        "php.net",
+        "livewire"
+    ],
     "license": "Apache-2.0",
     "require": {
         "php": "^8.4",
         "laravel/ai": "^0.11.2",
-        "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10.1",
+        "laravel/framework": "^13.0",
+        "laravel/tinker": "^3.0",
         "livewire/blaze": "^1.0",
         "livewire/livewire": "^4.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.10",
-        "laravel/boost": "^2.4",
+        "laravel/boost": "^2.0",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",
         "laravel/sail": "^1.41",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6",
-        "pestphp/pest": "^3.8",
-        "pestphp/pest-plugin-laravel": "^3.2",
-        "phpunit/phpunit": "^11.5.50"
+        "nunomaduro/collision": "^8.9.5",
+        "pestphp/pest": "^5.0",
+        "pestphp/pest-plugin-laravel": "^5.0",
+        "phpunit/phpunit": "^13.0"
     },
     "autoload": {
         "psr-4": {

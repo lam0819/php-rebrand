@@ -21,10 +21,17 @@ final class ManualAssistant
      */
     public function answer(string $question, string $context): array
     {
-        $models = array_values((array) config('assistant.models'));
-        $threshold = (float) config('assistant.first_token_timeout');
-        $total = (int) config('assistant.total_timeout');
-        $deadline = microtime(true) + (float) config('assistant.deadline');
+        $models = [];
+
+        foreach ((array) config('assistant.models') as $candidate) {
+            if (is_string($candidate) && $candidate !== '') {
+                $models[] = $candidate;
+            }
+        }
+
+        $threshold = config()->float('assistant.first_token_timeout');
+        $total = config()->integer('assistant.total_timeout');
+        $deadline = microtime(true) + config()->float('assistant.deadline');
         $lastError = null;
 
         foreach ($models as $model) {
@@ -39,7 +46,7 @@ final class ManualAssistant
             try {
                 $stream = (new ManualAnswerAgent($context))->stream(
                     $question,
-                    provider: config('assistant.provider'),
+                    provider: config()->string('assistant.provider'),
                     model: $model,
                     timeout: (int) max(1, min($total, $remaining)),
                 );

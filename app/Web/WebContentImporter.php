@@ -78,7 +78,11 @@ final class WebContentImporter
         $root = rtrim($sourcePath, '/');
 
         foreach (config()->array('web.news.entries_paths') as $relative) {
-            $files = glob($root.'/'.trim((string) $relative, '/').'/*.xml') ?: [];
+            if (! is_string($relative)) {
+                continue;
+            }
+
+            $files = glob($root.'/'.trim($relative, '/').'/*.xml') ?: [];
 
             if ($files !== []) {
                 return $files;

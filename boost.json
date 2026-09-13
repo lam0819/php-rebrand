@@ -13,8 +13,12 @@
     "nightwatch": false,
     "sail": false,
     "skills": [
+        "infer-conventions",
+        "deploying-to-cloud",
+        "ai-sdk-development",
         "laravel-best-practices",
-        "pest-testing",
+        "testing-best-practices",
+        "livewire-development",
         "deploying-laravel-cloud"
     ]
 }

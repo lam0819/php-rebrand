@@ -15,8 +15,8 @@ final class SearchIndexController extends Controller
 {
     public function __invoke(): Response
     {
-        $gzPath = (string) config('search.index.gz_path');
-        $plainPath = (string) config('search.index.path');
+        $gzPath = config()->string('search.index.gz_path');
+        $plainPath = config()->string('search.index.path');
 
         if (is_file($gzPath)) {
             return response()->file($gzPath, [

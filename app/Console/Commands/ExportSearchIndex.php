@@ -25,7 +25,7 @@ final class ExportSearchIndex extends Command
     {
         $path = (string) ($this->option('path') ?: storage_path('app/search-export.ndjson'));
         $limit = max(0, (int) $this->option('limit'));
-        $excerptChars = max(0, (int) config('search.index.excerpt_chars'));
+        $excerptChars = max(0, config()->integer('search.index.excerpt_chars'));
 
         $directory = dirname($path);
         if (! is_dir($directory) && ! mkdir($directory, 0o755, true) && ! is_dir($directory)) {

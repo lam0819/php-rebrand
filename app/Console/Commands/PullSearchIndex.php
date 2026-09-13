@@ -24,7 +24,7 @@ final class PullSearchIndex extends Command
 
     public function handle(): int
     {
-        $gzPath = (string) config('search.index.gz_path');
+        $gzPath = config()->string('search.index.gz_path');
         $url = $this->url();
 
         if (is_file($gzPath) && ! $this->option('force')) {

@@ -24,10 +24,10 @@ final class BuildSearchIndex extends Command
 
     public function handle(): int
     {
-        $wasmDir = (string) config('search.inlaysql.wasm_path');
+        $wasmDir = config()->string('search.inlaysql.wasm_path');
         $script = base_path('scripts/inlaysql/build-index.mjs');
         $export = storage_path('app/search-export.ndjson');
-        $output = (string) config('search.index.path');
+        $output = config()->string('search.index.path');
 
         if (! is_file($wasmDir.'/inlaysql_wasm.js')) {
             $this->error('InlaySQL WASM bundle is missing. Run `bash scripts/inlaysql/install-wasm.sh` first.');
@@ -62,11 +62,11 @@ final class BuildSearchIndex extends Command
             '--input='.$export,
             '--output='.$output,
             '--wasm-dir='.$wasmDir,
-            '--dim='.(int) config('search.index.dimensions'),
-            '--batch='.(int) config('search.index.batch_size'),
+            '--dim='.config()->integer('search.index.dimensions'),
+            '--batch='.config()->integer('search.index.batch_size'),
         ];
 
-        if (config('search.index.int8')) {
+        if (config()->boolean('search.index.int8')) {
             $command[] = '--int8';
         }
 
