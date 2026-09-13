@@ -23,22 +23,26 @@ const CATEGORY_LABELS = {
   set: 'Set',
 };
 
-const categoryLabel = (type) => CATEGORY_LABELS[type] ?? (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Page');
+const categoryLabel = (type) =>
+  CATEGORY_LABELS[type] ?? (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Page');
 
 const states = new WeakMap();
 
 function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (c) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-  ));
+  return String(value).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 }
 
 function itemHtml(r) {
   const desc = r.purpose ? `<span class="sr-desc">${escapeHtml(r.purpose)}</span>` : '';
-  return `<a class="sr-item" href="/manual/${encodeURIComponent(r.slug)}" wire:navigate>` +
+  return (
+    `<a class="sr-item" href="/manual/${encodeURIComponent(r.slug)}" wire:navigate>` +
     `<span class="sr-head">` +
     `<span class="sr-kind" title="${escapeHtml(r.type)}">${escapeHtml(categoryLabel(r.type))}</span>` +
-    `<span class="sr-name">${escapeHtml(r.title)}</span></span>${desc}</a>`;
+    `<span class="sr-name">${escapeHtml(r.title)}</span></span>${desc}</a>`
+  );
 }
 
 function render(container, results) {
@@ -64,7 +68,8 @@ function render(container, results) {
   } else {
     let html = '';
     for (const [label, items] of groups) {
-      html += `<div class="sr-group"><span class="sr-group-label">${escapeHtml(label)}</span>` +
+      html +=
+        `<div class="sr-group"><span class="sr-group-label">${escapeHtml(label)}</span>` +
         `<span class="sr-group-count">${items.length}</span></div>`;
       html += items.map(itemHtml).join('');
     }
@@ -133,22 +138,26 @@ function ensureState(root) {
   // would otherwise morph the component and wipe our dropdown. Then we schedule
   // the query here (stopping propagation would also silence a bubble listener
   // on this same root). Only if the engine fails do we hand the input back.
-  root.addEventListener('input', (event) => {
-    if (!event.target.matches('[data-search]')) return;
-    if (state.failed) return;
+  root.addEventListener(
+    'input',
+    (event) => {
+      if (!event.target.matches('[data-search]')) return;
+      if (state.failed) return;
 
-    event.stopImmediatePropagation();
-    root.classList.add('wasm-active');
+      event.stopImmediatePropagation();
+      root.classList.add('wasm-active');
 
-    if (!state.ready) {
-      start();
-      return;
-    }
+      if (!state.ready) {
+        start();
+        return;
+      }
 
-    const term = event.target.value.trim();
-    clearTimeout(state.timer);
-    state.timer = setTimeout(() => runQuery(state, term), 120);
-  }, true);
+      const term = event.target.value.trim();
+      clearTimeout(state.timer);
+      state.timer = setTimeout(() => runQuery(state, term), 120);
+    },
+    true,
+  );
 
   return state;
 }
@@ -159,10 +168,14 @@ document.addEventListener('focusin', (event) => {
 });
 
 // Ensure the root's listeners exist before the first input reaches them.
-document.addEventListener('input', (event) => {
-  const root = event.target.closest?.('[data-search-root]');
-  if (root) ensureState(root);
-}, true);
+document.addEventListener(
+  'input',
+  (event) => {
+    const root = event.target.closest?.('[data-search-root]');
+    if (root) ensureState(root);
+  },
+  true,
+);
 
 document.addEventListener('click', (event) => {
   document.querySelectorAll('[data-search-root]').forEach((root) => {

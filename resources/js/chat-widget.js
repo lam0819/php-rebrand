@@ -110,7 +110,8 @@ function showOptimisticQuestion(question) {
   // generated (Livewire replaces the whole list when the answer arrives).
   const typing = document.createElement('div');
   typing.className = 'assistant-msg assistant-msg-bot';
-  typing.innerHTML = '<div class="assistant-bubble assistant-typing" aria-label="Thinking">' +
+  typing.innerHTML =
+    '<div class="assistant-bubble assistant-typing" aria-label="Thinking">' +
     '<span></span><span></span><span></span></div>';
   el.appendChild(typing);
 

@@ -31,7 +31,7 @@ return [
 
     // Hard cap across every attempt, so a chain of slow models can never reach
     // the gateway's timeout (which surfaces as a 504 to the visitor).
-    'deadline' => (int) env('ASSISTANT_DEADLINE', 45),
+    'deadline' => (float) env('ASSISTANT_DEADLINE', 45),
 
     // How many retrieved pages to pass as context, and how much of each.
     'sources' => (int) env('ASSISTANT_SOURCES', 8),

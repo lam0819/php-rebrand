@@ -78,7 +78,10 @@ const flush = () => {
     tuples.push(`(?${p++}, ?${p++}, ?${p++}, ?${p++}, ?${p++}, ?${p++})`);
     params.push(row.slug, row.title, row.type, row.purpose, row.body, row.embedding);
   }
-  db.execute(`INSERT INTO pages (slug, title, type, purpose, body, embedding) VALUES ${tuples.join(',')}`, JSON.stringify(params));
+  db.execute(
+    `INSERT INTO pages (slug, title, type, purpose, body, embedding) VALUES ${tuples.join(',')}`,
+    JSON.stringify(params),
+  );
   count += batch.length;
   batch = [];
   if (count % 1000 === 0) process.stderr.write(`  indexed ${count} pages\n`);
@@ -105,11 +108,17 @@ process.stderr.write('  building indexes…\n');
 db.execute('REINDEX');
 
 process.stderr.write('  checkpointing…\n');
-try { db.execute('CHECKPOINT'); } catch { /* not required on every build */ }
+try {
+  db.execute('CHECKPOINT');
+} catch {
+  /* not required on every build */
+}
 
 const bytes = db.export();
 writeFileSync(output, bytes);
 db.free();
 
-process.stderr.write(`search index: ${count} pages, dim ${dim}${int8 ? ' int8' : ''}, ${(bytes.length / 1024 / 1024).toFixed(1)} MiB → ${output}\n`);
+process.stderr.write(
+  `search index: ${count} pages, dim ${dim}${int8 ? ' int8' : ''}, ${(bytes.length / 1024 / 1024).toFixed(1)} MiB → ${output}\n`,
+);
 process.stdout.write(JSON.stringify({ pages: count, bytes: bytes.length, output }) + '\n');

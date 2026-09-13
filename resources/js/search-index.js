@@ -66,5 +66,11 @@ export async function hybridSearch(term, { limit = 8, url = DEFAULT_INDEX } = {}
 
   const result = JSON.parse(db.query(sql, JSON.stringify([embedding, term])));
 
-  return result.rows.map(([slug, title, type, purpose, body]) => ({ slug, title, type, purpose, body }));
+  return result.rows.map(([slug, title, type, purpose, body]) => ({
+    slug,
+    title,
+    type,
+    purpose,
+    body,
+  }));
 }

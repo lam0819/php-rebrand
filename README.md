@@ -7,7 +7,7 @@
 [![InlaySQL](https://img.shields.io/badge/InlaySQL-vector%20%2B%20BM25-6E56CF?style=flat-square)](https://github.com/inlaySQL/inlaysql)
 [![OpenRouter](https://img.shields.io/badge/OpenRouter-free%20models-6467F2?style=flat-square)](https://openrouter.ai)
 [![Laravel Cloud](https://img.shields.io/badge/Laravel_Cloud-deployed-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://cloud.laravel.com)
-[![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vite.dev)
+[![Vite+](https://img.shields.io/badge/Vite+-0.3-646CFF?style=flat-square&logo=vite&logoColor=white)](https://viteplus.dev)
 [![Pest](https://img.shields.io/badge/Pest-5-F28D1A?style=flat-square)](https://pestphp.com)
 [![Playwright](https://img.shields.io/badge/Playwright-e2e-2EAD33?style=flat-square&logo=playwright&logoColor=white)](https://playwright.dev)
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/lam0819/php-rebrand/actions)
@@ -80,7 +80,7 @@ queried in the visitor's browser — see
 |---|---|
 | Language / Framework | PHP 8.4 (strict types throughout) · Laravel 13 |
 | Server UI | [Livewire](https://livewire.laravel.com) v4 + Blade single-file components, `livewire/blaze` compile-time folding |
-| Styling | Hand-written CSS design system (OKLch tokens), built with [Vite](https://vite.dev) 7 |
+| Styling / bundling | Hand-written CSS design system (OKLch tokens) + vanilla JS, built with [Vite+](https://viteplus.dev) (`vp`) — Vite 8 / Rolldown, Oxlint + Oxfmt |
 | App database | [SQLite](https://sqlite.org) — one prebuilt, effectively read-only file in production (`database.sqlite.gz`) |
 | Search | [InlaySQL](https://github.com/inlaySQL/inlaysql) — one file with a **BM25 + HNSW vector** index, queried **client-side via WASM**; SQLite FTS5 is the server fallback |
 | AI assistant | [`laravel/ai`](https://github.com/laravel/ai) → [OpenRouter](https://openrouter.ai) free models, three-model failover, retrieval from the InlaySQL index |
@@ -113,7 +113,7 @@ app/
   Http/Controllers/     Home, Manual, News, Downloads, Llms, Pwa, Sitemap
 resources/
   views/                Blade pages + components (⚡-prefixed = Livewire SFCs)
-  css/ js/              Design system + vanilla JS, bundled by Vite
+  css/ js/              Design system + vanilla JS, bundled by Vite+
 config/
   docs.php  web.php     Upstream repo URLs + local checkout paths
 database/migrations/    docs_pages, docs_fts, news_items, php_releases
@@ -256,6 +256,7 @@ as `php/doc-en` and `php/web-php` change.
 composer test                  # Pest
 composer analyse               # PHPStan, max level  (use --memory-limit=512M if it OOMs)
 composer lint                  # Pint (apply)
+npm run check                  # Vite+ (Oxfmt + Oxlint) on the frontend
 ```
 
 ---

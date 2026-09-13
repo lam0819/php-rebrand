@@ -13,7 +13,10 @@ const STORAGE_KEY = 'php-theme';
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   document.querySelectorAll('[data-theme-toggle]').forEach((btn) => {
-    btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    btn.setAttribute(
+      'aria-label',
+      theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme',
+    );
   });
 }
 
@@ -28,7 +31,7 @@ document.addEventListener('click', (e) => {
     const next = currentTheme() === 'dark' ? 'light' : 'dark';
     try {
       localStorage.setItem(STORAGE_KEY, next);
-    } catch (_) {}
+    } catch {}
     applyTheme(next);
     return;
   }

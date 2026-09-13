@@ -44,6 +44,7 @@ parser or the renderer so every page benefits — never patch the output.
    composer test        # Pest
    composer analyse     # PHPStan (max level)
    vendor/bin/pint      # Pint, apply formatting
+   npm run check        # Vite+ format + lint the frontend
    npm run test:e2e     # Playwright browser smoke test (needs the search index)
    ```
    The browser search needs its engine and index. For the end-to-end test,
