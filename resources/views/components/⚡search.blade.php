@@ -47,7 +47,13 @@ new class extends Component
     }
 }; ?>
 
-<div class="searchbar" style="position: relative; width: 260px" @click.outside="$wire.query = ''">
+<div
+  class="searchbar"
+  data-search-root
+  data-search-index="{{ route('search.index') }}"
+  style="position: relative; width: 260px"
+  @click.outside="$wire.query = ''"
+>
   <span class="s-icon">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
   </span>
@@ -75,4 +81,7 @@ new class extends Component
       @endforelse
     </div>
   @endif
+
+  {{-- Filled by resources/js/search-wasm.js once the in-browser engine is ready. --}}
+  <div class="search-results search-wasm-results" data-search-wasm-results hidden></div>
 </div>

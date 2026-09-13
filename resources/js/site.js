@@ -4,6 +4,8 @@
  | Livewire's wire:navigate page swaps (no per-element re-binding needed).
  */
 
+import './search-wasm.js';
+
 const STORAGE_KEY = 'php-theme';
 
 function applyTheme(theme) {

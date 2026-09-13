@@ -136,6 +136,38 @@ composer run dev               # serve + queue + logs + Vite, all at once
 
 If a frontend change doesn't show up, run `npm run build` (or `npm run dev`).
 
+### Browser search (InlaySQL vector + BM25)
+
+Search runs **entirely in the browser** on [InlaySQL](https://github.com/inlaySQL/inlaysql),
+a SQLite-shaped engine with native vector and BM25 retrieval. The manual is
+baked into one index at build time and queried client-side — no search server,
+no PHP database extension, no per-keystroke network round trip.
+
+```bash
+bash scripts/inlaysql/install-wasm.sh   # fetch the InlaySQL WASM engine
+php artisan search:build --fresh        # export manual → build manual-search.inlay
+```
+
+`search:build` streams each page (slug, title, type, purpose and an excerpt)
+through the WASM module's own `embed()` into a `pages` table with a BM25 index
+over the text and an HNSW index over the vector, then fuses them:
+
+```sql
+SELECT slug, title,
+       fuse(vector_score(embedding, ?1), bm25_score(body, ?2)) AS score
+FROM pages ORDER BY score DESC LIMIT 8
+```
+
+Because the corpus and the query are embedded by the **same function** — Rust
+hashed trigrams, run in Node at build time and in WASM at query time — the
+vectors always line up. The full manual is ~48 MB uncompressed and **~5 MB
+gzipped**.
+
+At runtime `search:pull` installs the published artifact and
+`/manual-search.inlay` streams it gzipped; the browser fetches it lazily the
+first time the search box is focused and falls back to the server-side FTS5
+search if the engine can't load.
+
 ### Keeping in sync with upstream
 
 `docs:sync` and `web:sync` are **incremental** — unchanged files are skipped by
@@ -181,12 +213,18 @@ sources and attaches it to the GitHub Release (see
 git tag v1.2.0 && git push origin v1.2.0
 ```
 
-The release then carries the freshly rebuilt `database.sqlite.gz` (+ `.sha256`),
-produced from the latest `php/doc-en` + `php/web-php`. **Download it and replace
-your SQLite** in one command — no clone of the upstream sources required:
+The release then carries the freshly rebuilt artifacts, produced from the latest
+`php/doc-en` + `php/web-php`:
+
+- `database.sqlite.gz` — the server-side manual.
+- `manual-search.inlay.gz` — the browser search index.
+
+**Download them and install** in one command each — no clone of the upstream
+sources required:
 
 ```bash
 php artisan docs:pull --force     # download → verify sha256 → replace database/database.sqlite
+php artisan search:pull --force   # download → verify sha256 → install the browser search index
 ```
 
 Prefer to do it by hand? Grab
@@ -203,11 +241,18 @@ release" asset), verifies the sha256 when available, and replaces
 
 ### Any PHP host / Laravel Cloud
 
-It's a standard Laravel 12 app. Run `php artisan docs:pull --force` as a **build
-command** so the latest prebuilt SQLite ships with each deployment, then serve
-with PHP-FPM + a web server. Run the scheduler (`php artisan schedule:run` every
-minute, or `schedule:work`) if you want the site to keep itself current with
-upstream automatically.
+It's a standard Laravel 12 app. As a **build command** install the WASM engine
+and pull both artifacts so the latest prebuilt content ships with each
+deployment, then serve with PHP-FPM + a web server:
+
+```bash
+bash scripts/inlaysql/install-wasm.sh
+php artisan docs:pull --force
+php artisan search:pull --force
+```
+
+Run the scheduler (`php artisan schedule:run` every minute, or `schedule:work`)
+if you want the site to keep itself current with upstream automatically.
 
 #### Auto-deploy from a version tag (deploy hook)
 
@@ -218,10 +263,10 @@ credential, so store it as a secret.
 
 1. In GitHub: **Settings → Secrets and variables → Actions → New repository
    secret**, named `LARAVEL_CLOUD_DEPLOY_HOOK`, with the URL as the value.
-2. Set the environment's **build command** to `php artisan docs:pull --force`.
+2. Set the environment's **build command** to the three lines above.
 3. `git push origin v1.2.0` — the [release workflow](.github/workflows/content-release.yml)
-   builds the new SQLite, attaches it to the release, then `POST`s the hook so
-   Laravel Cloud deploys with the fresh content.
+   builds the new SQLite and search index, attaches them to the release, then
+   `POST`s the hook so Laravel Cloud deploys with the fresh content.
 
 Trigger it by hand any time (optionally pinning a commit on the environment's
 branch):

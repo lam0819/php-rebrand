@@ -19,6 +19,11 @@
 /storage/*.key
 /storage/pail
 /storage/phpstan
+/storage/app/inlaysql
+/storage/app/manual-search.inlay
+/storage/app/manual-search.inlay.gz
+/storage/app/search-export.ndjson
+/public/inlaysql
 /vendor
 Homestead.json
 Homestead.yaml

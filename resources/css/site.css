@@ -180,6 +180,10 @@ h1, h2, h3, h4 { text-wrap: balance; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50%; }
 .sr-empty { padding: 18px; text-align: center; color: var(--muted); font-size: 14px; }
 
+/* In-browser WASM search takes over the dropdown once its engine is ready. */
+.search-wasm-results[hidden] { display: none !important; }
+.searchbar.wasm-active .search-results:not(.search-wasm-results) { display: none !important; }
+
 /* ── buttons ──────────────────────────────────────────────────────── */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 11px 20px; border-radius: var(--radius); border: 1px solid transparent;

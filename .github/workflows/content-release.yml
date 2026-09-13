@@ -40,6 +40,11 @@ jobs:
           ini-values: memory_limit=-1
           coverage: none
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Cache Composer packages
         uses: actions/cache@v4
         with:
@@ -58,6 +63,12 @@ jobs:
       - name: Build the SQLite manual from upstream
         run: php artisan docs:build --fresh
 
+      - name: Install the InlaySQL WASM engine
+        run: bash scripts/inlaysql/install-wasm.sh
+
+      - name: Build the browser search index
+        run: php artisan search:build --fresh
+
       - name: Record upstream revisions
         id: upstream
         run: |
@@ -68,20 +79,23 @@ jobs:
             echo "web_sha=${web_sha}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Package the artifact
+      - name: Package the artifacts
         run: |
           gzip -9 -c database/database.sqlite > database.sqlite.gz
           sha256sum database.sqlite.gz > database.sqlite.gz.sha256
-          ls -lh database.sqlite.gz
-          cat database.sqlite.gz.sha256
+          gzip -9 -c storage/app/manual-search.inlay > manual-search.inlay.gz
+          sha256sum manual-search.inlay.gz > manual-search.inlay.gz.sha256
+          ls -lh database.sqlite.gz manual-search.inlay.gz
 
-      - name: Upload the workflow artifact
+      - name: Upload the workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: database-sqlite
+          name: content-artifacts
           path: |
             database.sqlite.gz
             database.sqlite.gz.sha256
+            manual-search.inlay.gz
+            manual-search.inlay.gz.sha256
           retention-days: 14
 
       - name: Publish release assets
@@ -91,18 +105,26 @@ jobs:
           files: |
             database.sqlite.gz
             database.sqlite.gz.sha256
+            manual-search.inlay.gz
+            manual-search.inlay.gz.sha256
           generate_release_notes: false
           body: |
-            Prebuilt, ready-to-serve SQLite manual, rebuilt from the latest
-            upstream sources.
+            Prebuilt content, rebuilt from the latest upstream sources.
 
             - `php/doc-en` @ `${{ steps.upstream.outputs.docs_sha }}`
             - `php/web-php` @ `${{ steps.upstream.outputs.web_sha }}`
 
-            Install it with:
+            Artifacts:
+
+            - `database.sqlite.gz` — the manual, news and releases for the server.
+            - `manual-search.inlay.gz` — the InlaySQL vector + BM25 index the
+              browser downloads for client-side search.
+
+            Install them with:
 
             ```bash
             php artisan docs:pull --force
+            php artisan search:pull --force
             ```
 
             Content is parsed from upstream and **never hand-authored**. See

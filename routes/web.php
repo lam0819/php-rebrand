@@ -7,6 +7,7 @@ use App\Http\Controllers\LlmsController;
 use App\Http\Controllers\ManualController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PwaController;
+use App\Http\Controllers\SearchIndexController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,9 @@ Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog
 Route::get('/changelog/{version}', [ChangelogController::class, 'show'])->name('changelog.show')->where('version', '[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9.-]*');
 Route::view('/get-involved', 'pages.get-involved')->name('get-involved');
 Route::view('/offline', 'offline')->name('offline');
+
+// Prebuilt browser search index (InlaySQL vector + BM25).
+Route::get('/manual-search.inlay', SearchIndexController::class)->name('search.index');
 
 // PWA + crawler files.
 Route::get('/manifest.webmanifest', [PwaController::class, 'manifest']);
