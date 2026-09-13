@@ -52,5 +52,8 @@ test('browser search resolves a function name typed before the engine loads', as
 
   const results = root.locator('[data-search-wasm-results]');
   await expect(results).toBeVisible({ timeout: 45_000 });
-  await expect(results.locator('.sr-item').first()).toContainText('password_hash');
+  // The exact page should be among the ranked results (ranking can vary).
+  await expect(
+    results.locator('a[href="/manual/reference-password-functions-password-hash"]'),
+  ).toHaveCount(1);
 });

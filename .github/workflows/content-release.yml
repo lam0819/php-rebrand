@@ -139,14 +139,28 @@ jobs:
           set -euo pipefail
           tag="${{ env.RELEASE_TAG }}"
 
+          # The GitHub Releases API intermittently returns 500 — retry.
+          retry() {
+            local attempt=1
+            until "$@"; do
+              if [ "$attempt" -ge 5 ]; then
+                echo "Command failed after $attempt attempts: $*" >&2
+                return 1
+              fi
+              echo "Attempt $attempt failed; retrying in $((attempt * 5))s: $*" >&2
+              sleep $((attempt * 5))
+              attempt=$((attempt + 1))
+            done
+          }
+
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $tag exists; uploading assets."
           else
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$NOTES"
+            retry gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$NOTES"
             echo "Created release $tag."
           fi
 
-          gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber \
+          retry gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber \
             database.sqlite.gz database.sqlite.gz.sha256 \
             manual-search.inlay.gz manual-search.inlay.gz.sha256
 
