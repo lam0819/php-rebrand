@@ -309,14 +309,21 @@ embedder-agnostic.
 The "Ask AI" widget layers a server-side answer on top of the same client-side
 retrieval. [`chat-widget.js`](../resources/js/chat-widget.js) runs a hybrid query
 in the browser, then dispatches `ask-ai` with the retrieved pages; the Livewire
-component calls [`ManualAnswerAgent`](../app/Ai/ManualAnswerAgent.php) through
-`laravel/ai` with the OpenRouter provider.
+component renders a chat and delegates generation to
+[`ManualAssistant`](../app/Ai/ManualAssistant.php).
 
-The agent is asked for **structured output** — `{answer, citations: [int]}` — so
-the prose and its sources stay separate. Citations are indices into our own page
-list, never model-authored URLs, and the Markdown is stripped of raw HTML before
-rendering. The key stays server-side, per-IP throttling protects the model quota,
-and the widget is hidden unless `OPENROUTER_API_KEY` is configured.
+`ManualAssistant` tries up to three OpenRouter models in order. It consumes the
+streamed response and abandons a model whose **first token** takes longer than
+`first_token_timeout` (default 3s), or that errors; a global `deadline` (45s)
+caps the whole chain, so a hanging model can simply not reach the gateway's own
+timeout (which shows up as a 504). The model that answered is shown under the
+message.
+
+The model replies in Markdown with inline `[n]` citations. Those indices are
+turned into links to the pages we retrieved — never model-authored URLs — and
+the Markdown is stripped of raw HTML before rendering. The key stays server-side,
+per-IP throttling protects the model quota, and the widget is hidden unless
+`OPENROUTER_API_KEY` is configured.
 
 ---
 

@@ -183,8 +183,14 @@ browser: question ──► InlaySQL WASM hybrid search ──► top 6 pages
 ```
 
 - The API key never reaches the client — the call is made by the server.
+- **Three models fail over in order**: a model is abandoned if its first token
+  takes longer than `first_token_timeout` (3s) or it errors, and a global
+  `deadline` (45s) caps the whole chain — so a slow model can't produce a 504.
+  The widget shows which model answered.
 - Citations are **indices**, mapped back to our own page URLs; the model never
   authors links. HTML in the answer is stripped before rendering.
+- It's a chat: the question appears instantly, a typing indicator runs, and the
+  answer streams into a message bubble with its sources.
 - Per-IP rate limits (`assistant.throttle`) and a max question length protect the
   free tier.
 - If the browser can't load the index, the component falls back to server-side
@@ -195,11 +201,13 @@ It is **off unless `OPENROUTER_API_KEY` is set**. Configure it in `.env`:
 ```dotenv
 OPENROUTER_API_KEY=sk-or-...
 ASSISTANT_MODEL=nvidia/nemotron-3-super-120b-a12b:free
+ASSISTANT_MODEL_FALLBACK_1=google/gemma-4-31b-it:free
+ASSISTANT_MODEL_FALLBACK_2=nex-agi/nex-n2.5-mini:free
 ```
 
-Any OpenRouter model id works; the default is a free one. See
+Any OpenRouter model ids work; the defaults are free ones. See
 [`config/assistant.php`](config/assistant.php) for the retrieval count, excerpt
-size and limits.
+size, timeouts and limits.
 
 ### Keeping in sync with upstream
 

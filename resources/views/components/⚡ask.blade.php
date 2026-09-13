@@ -1,11 +1,11 @@
 <?php
 
-use App\Ai\ManualAnswerAgent;
+use App\Ai\ManualAssistant;
 use App\Docs\Persistence\DocPage;
 use App\Docs\Search\DocSearch;
 use App\Docs\Support\DocPagePresenter;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -13,18 +13,25 @@ new class extends Component
 {
     public bool $open = false;
 
-    public string $question = '';
-
-    public ?string $answer = null;
-
-    /** @var list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}> */
-    public array $sources = [];
+    /**
+     * The conversation, oldest first. User turns carry `text`; assistant turns
+     * carry rendered `html`, the `model` that answered, and `sources`.
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $messages = [];
 
     public ?string $error = null;
 
     public function toggle(): void
     {
         $this->open = ! $this->open;
+    }
+
+    public function clear(): void
+    {
+        $this->messages = [];
+        $this->error = null;
     }
 
     /**
@@ -36,10 +43,16 @@ new class extends Component
     #[On('ask-ai')]
     public function ask(string $question, array $context = []): void
     {
-        $this->answer = null;
         $this->error = null;
-        $this->sources = [];
-        $this->question = trim($question);
+        $question = trim($question);
+
+        // The browser optimistically shows the question while this runs; keep a
+        // single copy in state so a re-render cannot duplicate it.
+        $alreadyAsked = ($this->messages[count($this->messages) - 1] ?? null)['text'] ?? null;
+
+        if ($alreadyAsked !== $question) {
+            $this->messages[] = ['role' => 'user', 'text' => $question];
+        }
 
         if (! config('assistant.enabled')) {
             $this->error = 'The assistant is not available right now.';
@@ -49,13 +62,13 @@ new class extends Component
 
         $max = (int) config('assistant.max_question_chars');
 
-        if (mb_strlen($this->question) < 3) {
+        if (mb_strlen($question) < 3) {
             $this->error = 'Please ask a slightly longer question.';
 
             return;
         }
 
-        if (mb_strlen($this->question) > $max) {
+        if (mb_strlen($question) > $max) {
             $this->error = "Please keep questions under {$max} characters.";
 
             return;
@@ -67,7 +80,7 @@ new class extends Component
             return;
         }
 
-        $sources = $this->normaliseSources($context) ?: $this->retrieve($this->question);
+        $sources = $this->normaliseSources($context) ?: $this->retrieve($question);
 
         if ($sources === []) {
             $this->error = 'I could not find anything about that in the manual. Try a function name like str_replace.';
@@ -76,13 +89,7 @@ new class extends Component
         }
 
         try {
-            $response = (new ManualAnswerAgent($this->contextFor($sources)))
-                ->prompt(
-                    $this->question,
-                    provider: config('assistant.provider'),
-                    model: config('assistant.model'),
-                    timeout: 60,
-                );
+            $result = app(ManualAssistant::class)->answer($question, $this->contextFor($sources));
         } catch (Throwable $exception) {
             report($exception);
             $this->error = 'The assistant is temporarily unavailable. Please try again.';
@@ -90,20 +97,33 @@ new class extends Component
             return;
         }
 
-        $data = $response instanceof Illuminate\Contracts\Support\Arrayable
-            ? $response->toArray()
-            : ['answer' => (string) $response, 'citations' => []];
+        $this->messages[] = [
+            'role' => 'assistant',
+            'html' => $this->renderAnswer($result['text'], $sources),
+            'model' => $result['model'],
+            'sources' => $this->citedSources($sources, $result['text']),
+        ];
+    }
 
-        $text = is_string($data['answer'] ?? null) ? trim($data['answer']) : '';
+    /**
+     * Convert the model's Markdown into safe HTML, turning [n] citations into
+     * links to the pages we retrieved (never model-authored URLs).
+     *
+     * @param  list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>  $sources
+     */
+    private function renderAnswer(string $text, array $sources): string
+    {
+        $linked = preg_replace_callback('/\[(\d+)\]/', static function (array $match) use ($sources): string {
+            $index = (int) $match[1];
 
-        if ($text === '') {
-            $this->error = 'The assistant did not return an answer. Please try again.';
+            if ($index < 1 || $index > count($sources)) {
+                return $match[0];
+            }
 
-            return;
-        }
+            return '['.$index.'](/manual/'.$sources[$index - 1]['slug'].')';
+        }, $text);
 
-        $this->answer = Str::markdown($text, ['html_input' => 'strip', 'allow_unsafe_links' => false]);
-        $this->sources = $this->citedSources($sources, $this->citations($data['citations'] ?? [], count($sources)));
+        return Str::markdown($linked ?? $text, ['html_input' => 'strip', 'allow_unsafe_links' => false]);
     }
 
     /**
@@ -199,35 +219,33 @@ new class extends Component
     }
 
     /**
-     * @return list<int>
+     * The pages the answer cited, or the top few when it cited none.
+     *
+     * @param  list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>  $sources
+     * @return list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>
      */
-    private function citations(mixed $raw, int $count): array
+    private function citedSources(array $sources, string $text): array
     {
-        if (! is_array($raw)) {
-            return [];
-        }
+        preg_match_all('/\[(\d+)\]/', $text, $matches);
 
-        $valid = [];
+        $cited = [];
 
-        foreach ($raw as $index) {
+        foreach ($matches[1] ?? [] as $index) {
             $index = (int) $index;
 
-            if ($index >= 1 && $index <= $count) {
-                $valid[$index] = true;
+            if ($index >= 1 && $index <= count($sources)) {
+                $cited[$index] = true;
             }
         }
 
-        return array_keys($valid);
-    }
+        if ($cited === []) {
+            return array_slice($sources, 0, 3);
+        }
 
-    /**
-     * @param  list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>  $sources
-     * @param  list<int>  $citations
-     * @return list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>
-     */
-    private function citedSources(array $sources, array $citations): array
-    {
-        return array_values(array_map(static fn (int $index): array => $sources[$index - 1], $citations));
+        $indices = array_keys($cited);
+        sort($indices);
+
+        return array_values(array_map(static fn (int $index): array => $sources[$index - 1], $indices));
     }
 
     private function withinRateLimit(): bool
@@ -270,8 +288,55 @@ new class extends Component
   @if ($open)
     <div class="assistant-panel" data-assistant-panel>
       <div class="assistant-head">
-        <strong>Ask the manual</strong>
-        <span class="assistant-hint">Answers from a free AI model — may be imperfect. Always check the linked pages.</span>
+        <div class="assistant-head-title">
+          <span class="assistant-dot" aria-hidden="true"></span>
+          <strong>Ask the manual</strong>
+        </div>
+        @if ($messages !== [])
+          <button type="button" class="assistant-clear" wire:click="clear">Clear</button>
+        @endif
+      </div>
+
+      <div class="assistant-messages" data-assistant-messages>
+        @forelse ($messages as $message)
+          @if ($message['role'] === 'user')
+            <div class="assistant-msg assistant-msg-user">
+              <div class="assistant-bubble">{{ $message['text'] }}</div>
+            </div>
+          @else
+            <div class="assistant-msg assistant-msg-bot">
+              <div class="assistant-bubble">
+                <div class="assistant-answer">{!! $message['html'] !!}</div>
+                @if (! empty($message['sources']))
+                  <div class="assistant-sources">
+                    @foreach ($message['sources'] as $source)
+                      <a class="assistant-source" href="/manual/{{ $source['slug'] }}" wire:navigate>
+                        <span class="assistant-source-title">{{ $source['title'] }}</span>
+                        @if ($source['purpose'])<span class="assistant-source-desc">{{ $source['purpose'] }}</span>@endif
+                      </a>
+                    @endforeach
+                  </div>
+                @endif
+              </div>
+              @if (! empty($message['model']))
+                <span class="assistant-model">via {{ $message['model'] }}</span>
+              @endif
+            </div>
+          @endif
+        @empty
+          <div class="assistant-empty">
+            <p><strong>Ask anything about the PHP manual.</strong></p>
+            <p class="assistant-hint">It searches the manual and answers with links to the pages it used. Answers come from a free AI model and may be imperfect.</p>
+          </div>
+        @endforelse
+
+        <div class="assistant-msg assistant-msg-bot" wire:loading wire:target="ask">
+          <div class="assistant-bubble assistant-typing"><span></span><span></span><span></span></div>
+        </div>
+
+        @if ($error)
+          <p class="assistant-error">{{ $error }}</p>
+        @endif
       </div>
 
       <form class="assistant-form" data-assistant-form>
@@ -282,32 +347,12 @@ new class extends Component
           maxlength="{{ (int) config('assistant.max_question_chars') }}"
           autocomplete="off"
           aria-label="Your question"
+          @if ($messages === []) autofocus @endif
         />
-        <button type="submit" class="btn btn-primary btn-sm" wire:loading.attr="disabled" wire:target="ask">Ask</button>
+        <button type="submit" class="assistant-send" aria-label="Send" wire:loading.attr="disabled" wire:target="ask">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
       </form>
-
-      <div class="assistant-body">
-        <div class="assistant-thinking" wire:loading wire:target="ask">Searching the manual and thinking…</div>
-
-        @if ($error)
-          <p class="assistant-error">{{ $error }}</p>
-        @endif
-
-        @if ($answer)
-          <div class="assistant-answer">{!! $answer !!}</div>
-        @endif
-
-        @if ($sources)
-          <div class="assistant-sources">
-            @foreach ($sources as $source)
-              <a class="assistant-source" href="/manual/{{ $source['slug'] }}" wire:navigate>
-                <span class="assistant-source-title">{{ $source['title'] }}</span>
-                @if ($source['purpose'])<span class="assistant-source-desc">{{ $source['purpose'] }}</span>@endif
-              </a>
-            @endforeach
-          </div>
-        @endif
-      </div>
     </div>
   @endif
 </div>

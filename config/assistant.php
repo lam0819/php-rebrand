@@ -13,9 +13,25 @@ return [
 
     'provider' => env('ASSISTANT_PROVIDER', 'openrouter'),
 
-    // Any OpenRouter model id works; the default is a free one. See
-    // https://openrouter.ai/models?max_price=0
-    'model' => env('ASSISTANT_MODEL', 'nvidia/nemotron-3-super-120b-a12b:free'),
+    // Up to three OpenRouter models, tried in order. The next is used when the
+    // previous one does not start answering within `first_token_timeout`
+    // seconds or errors out. Any model ids work; these are free ones.
+    // See https://openrouter.ai/models?max_price=0
+    'models' => array_values(array_filter([
+        env('ASSISTANT_MODEL', 'nvidia/nemotron-3-super-120b-a12b:free'),
+        env('ASSISTANT_MODEL_FALLBACK_1', 'google/gemma-4-31b-it:free'),
+        env('ASSISTANT_MODEL_FALLBACK_2', 'nex-agi/nex-n2.5-mini:free'),
+    ])),
+
+    // How long a model may take to emit its first token before we move on.
+    'first_token_timeout' => (float) env('ASSISTANT_FIRST_TOKEN_TIMEOUT', 3),
+
+    // Hard cap on one model's full answer.
+    'total_timeout' => (int) env('ASSISTANT_TOTAL_TIMEOUT', 30),
+
+    // Hard cap across every attempt, so a chain of slow models can never reach
+    // the gateway's timeout (which surfaces as a 504 to the visitor).
+    'deadline' => (int) env('ASSISTANT_DEADLINE', 45),
 
     // How many retrieved pages to pass as context, and how much of each.
     'sources' => (int) env('ASSISTANT_SOURCES', 6),

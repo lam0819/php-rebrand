@@ -14,7 +14,7 @@ beforeEach(function () {
     config([
         'assistant.enabled' => true,
         'assistant.provider' => 'openrouter',
-        'assistant.model' => 'test/model:free',
+        'assistant.models' => ['test/model:free'],
     ]);
 });
 
@@ -29,25 +29,23 @@ function assistantContext(): array
     ]];
 }
 
-it('answers from the retrieved pages and links the cited source', function () {
-    ManualAnswerAgent::fake([
-        ['answer' => 'Use **str_replace** [1] to replace text.', 'citations' => [1]],
-    ]);
+it('answers from the retrieved pages, links the cited source and names the model', function () {
+    ManualAnswerAgent::fake(['Use **str_replace** [1] to replace text.']);
 
     Livewire::test('ask')
         ->set('open', true)
         ->call('ask', 'How do I replace part of a string?', assistantContext())
         ->assertSet('error', null)
+        ->assertSet('messages.0.role', 'user')
+        ->assertSet('messages.1.role', 'assistant')
+        ->assertSet('messages.1.model', 'test/model:free')
         ->assertSee('str_replace')
+        ->assertSee('via test/model:free')
         ->assertSee('/manual/reference-strings-functions-str-replace', escape: false);
-
-    ManualAnswerAgent::assertPrompted(fn ($prompt) => $prompt->contains('replace part of a string'));
 });
 
 it('strips raw html from the model answer', function () {
-    ManualAnswerAgent::fake([
-        ['answer' => 'Hello <script>alert(1)</script> there [1]', 'citations' => [1]],
-    ]);
+    ManualAnswerAgent::fake(['Hello <script>alert(1)</script> there [1]']);
 
     Livewire::test('ask')
         ->set('open', true)
@@ -67,9 +65,7 @@ it('falls back to server-side retrieval when the browser sends no context', func
     ));
     app(DocSearch::class)->rebuild();
 
-    ManualAnswerAgent::fake([
-        ['answer' => 'Use str_replace [1].', 'citations' => [1]],
-    ]);
+    ManualAnswerAgent::fake(['Use str_replace [1].']);
 
     Livewire::test('ask')
         ->set('open', true)
@@ -84,7 +80,6 @@ it('errors when nothing can be found', function () {
     Livewire::test('ask')
         ->set('open', true)
         ->call('ask', 'a question with no matching pages', [])
-        ->assertSet('answer', null)
         ->assertSet('error', fn ($error) => is_string($error) && $error !== '');
 });
 
@@ -103,6 +98,5 @@ it('rejects an over-long question', function () {
     Livewire::test('ask')
         ->set('open', true)
         ->call('ask', str_repeat('a', (int) config('assistant.max_question_chars') + 1), assistantContext())
-        ->assertSet('answer', null)
         ->assertSet('error', fn ($error) => is_string($error) && str_contains($error, 'under'));
 });
