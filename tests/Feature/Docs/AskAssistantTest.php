@@ -76,6 +76,28 @@ it('exposes a compact history for storage', function () {
         ->and($history[1])->not->toHaveKey('html');
 });
 
+it('merges a server-side body phrase match the browser index would miss', function () {
+    (new EloquentDocsPageRepository)->save(new DocPageDTO(
+        docId: 'chapters-tutorial',
+        slug: 'chapters-tutorial',
+        title: 'A simple tutorial',
+        type: DocumentType::Chapter,
+        sourcePath: 'chapters/tutorial.xml',
+        metadata: new MetadataDTO(purpose: 'The very basics of PHP'),
+        content: 'A short tutorial.',
+        bodyHtml: '<p>Our first PHP script: <code>hello.php</code>. Use <code>echo "Hello World!";</code></p>',
+    ));
+    app(DocSearch::class)->rebuild();
+
+    ManualAnswerAgent::fake(['Start with a hello world script [1].']);
+
+    Livewire::test('ask')
+        ->set('open', true)
+        ->call('ask', 'how to write a hello world in php', [])
+        ->assertSet('error', null)
+        ->assertSee('/manual/chapters-tutorial', escape: false);
+});
+
 it('strips raw html from the model answer', function () {
     ManualAnswerAgent::fake(['Hello <script>alert(1)</script> there [1]']);
 

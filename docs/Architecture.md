@@ -282,7 +282,10 @@ flowchart LR
 ```
 
 - [`ExportSearchIndex`](../app/Console/Commands/ExportSearchIndex.php) streams
-  `slug, title, type, purpose, excerpt` from `docs_pages` to NDJSON.
+  `slug, title, type, purpose, excerpt` from `docs_pages` to NDJSON. The excerpt
+  is the page's **real prose** — `body_html` stripped to text via
+  [`DocPagePresenter::plainText`](../app/Docs/Support/DocPagePresenter.php) —
+  because `content` only holds a short summary.
 - [`scripts/inlaysql/build-index.mjs`](../scripts/inlaysql/build-index.mjs) loads
   the WASM bundle in Node, embeds every page with the engine's own `embed()`, and
   writes the index in batched transactions. Batching is not an optimisation
@@ -300,7 +303,7 @@ flowchart LR
 
 The corpus and the query are embedded by **the same function** — Rust trigram
 hashing, run in Node at build time and in WASM at query time — so the vectors
-always line up. The full manual is ~48 MB raw and ~5 MB gzipped. Swapping to a
+always line up. The full manual is ~68 MB raw and ~10 MB gzipped. Swapping to a
 real embedding model means running it on both sides; the builder is otherwise
 embedder-agnostic.
 
@@ -318,6 +321,10 @@ streamed response and abandons a model whose **first token** takes longer than
 caps the whole chain, so a hanging model can simply not reach the gateway's own
 timeout (which shows up as a 504). The model that answered is shown under the
 message.
+
+Retrieval merges the browser's hybrid results with a server-side phrase search
+over the **real body text**, so a specific phrase like "hello world" still finds
+its page even though the compact browser index truncates long pages.
 
 The model replies in Markdown with inline `[n]` citations. Those indices are
 turned into links to the pages we retrieved — never model-authored URLs — and

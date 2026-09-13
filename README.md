@@ -160,7 +160,7 @@ FROM pages ORDER BY score DESC LIMIT 8
 
 Because the corpus and the query are embedded by the **same function** — Rust
 hashed trigrams, run in Node at build time and in WASM at query time — the
-vectors always line up. The full manual is ~48 MB uncompressed and **~5 MB
+vectors always line up. The full manual is ~68 MB uncompressed and **~10 MB
 gzipped**.
 
 At runtime `search:pull` installs the published artifact and

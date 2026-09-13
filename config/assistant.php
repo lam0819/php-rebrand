@@ -34,8 +34,8 @@ return [
     'deadline' => (int) env('ASSISTANT_DEADLINE', 45),
 
     // How many retrieved pages to pass as context, and how much of each.
-    'sources' => (int) env('ASSISTANT_SOURCES', 6),
-    'excerpt_chars' => (int) env('ASSISTANT_EXCERPT_CHARS', 900),
+    'sources' => (int) env('ASSISTANT_SOURCES', 8),
+    'excerpt_chars' => (int) env('ASSISTANT_EXCERPT_CHARS', 1200),
     'max_question_chars' => (int) env('ASSISTANT_MAX_QUESTION_CHARS', 500),
 
     'throttle' => [

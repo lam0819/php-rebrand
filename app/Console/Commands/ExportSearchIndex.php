@@ -44,7 +44,7 @@ final class ExportSearchIndex extends Command
         $count = 0;
 
         $query = DocPage::query()
-            ->select(['id', 'slug', 'title', 'type', 'content', 'metadata'])
+            ->select(['id', 'slug', 'title', 'type', 'content', 'body_html', 'metadata'])
             ->orderBy('id');
 
         if ($limit > 0) {
@@ -58,7 +58,8 @@ final class ExportSearchIndex extends Command
                     'title' => (string) $page->title,
                     'type' => (string) $page->type,
                     'purpose' => (string) ($presenter->purpose($page) ?? ''),
-                    'excerpt' => $this->excerpt((string) ($page->content ?? ''), $excerptChars),
+                    // The real body (HTML stripped), not the tiny `content` summary.
+                    'excerpt' => $presenter->plainText($page, $excerptChars),
                 ];
 
                 fwrite($handle, json_encode($record, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)."\n");
@@ -71,16 +72,5 @@ final class ExportSearchIndex extends Command
         $this->components->info("Exported {$count} pages to {$path}.");
 
         return self::SUCCESS;
-    }
-
-    private function excerpt(string $content, int $chars): string
-    {
-        $text = trim((string) preg_replace('/\s+/u', ' ', $content));
-
-        if ($chars > 0 && mb_strlen($text) > $chars) {
-            $text = mb_substr($text, 0, $chars);
-        }
-
-        return $text;
     }
 }

@@ -105,6 +105,15 @@ function showOptimisticQuestion(question) {
 
   row.appendChild(bubble);
   el.appendChild(row);
+
+  // A "typing" bubble so there is always visible feedback while the answer is
+  // generated (Livewire replaces the whole list when the answer arrives).
+  const typing = document.createElement('div');
+  typing.className = 'assistant-msg assistant-msg-bot';
+  typing.innerHTML = '<div class="assistant-bubble assistant-typing" aria-label="Thinking">' +
+    '<span></span><span></span><span></span></div>';
+  el.appendChild(typing);
+
   scrollToBottom();
 }
 

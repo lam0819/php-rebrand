@@ -154,7 +154,10 @@ new class extends Component
             return;
         }
 
-        $sources = $this->normaliseSources($context) ?: $this->retrieve($question);
+        // The browser's hybrid search leads, but precise phrase/keyword matches
+        // from the server's full body text are merged in — the small lexical
+        // index can rank a common word like "hello" poorly on its own.
+        $sources = $this->mergeSources($this->normaliseSources($context), $this->retrieve($question));
 
         if ($sources === []) {
             $this->error = 'I could not find anything about that in the manual. Try a function name like str_replace.';
@@ -236,7 +239,9 @@ new class extends Component
     }
 
     /**
-     * Server-side fallback retrieval (FTS5/LIKE) when the browser sends none.
+     * Server-side retrieval over the real body text: FTS5 on title/purpose,
+     * plus phrase/keyword matches in `body_html` (which the small browser index
+     * truncates). Always merged with the browser's results.
      *
      * @return list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>
      */
@@ -245,37 +250,125 @@ new class extends Component
         $limit = (int) config('assistant.sources');
         $presenter = app(DocPagePresenter::class);
 
-        $summaries = app(DocSearch::class)->summaries($question, $limit);
+        $slugs = array_column(app(DocSearch::class)->summaries($question, $limit) ?? [], 'slug');
 
-        if ($summaries === null) {
-            $like = '%'.$question.'%';
-            $summaries = DocPage::query()
-                ->where(fn ($query) => $query->where('title', 'like', $like)->orWhere('slug', 'like', $like))
-                ->orderBy('title')
-                ->limit($limit)
-                ->get()
-                ->map(fn (DocPage $page) => $presenter->summary($page))
-                ->all();
+        foreach ($this->bodyMatches($question, $limit) as $slug) {
+            $slugs[] = $slug;
         }
 
-        if ($summaries === []) {
+        $slugs = array_values(array_unique($slugs));
+
+        if ($slugs === []) {
             return [];
         }
 
-        $contents = DocPage::query()->whereIn('slug', array_column($summaries, 'slug'))->pluck('content', 'slug');
         $chars = (int) config('assistant.excerpt_chars');
+        $pages = DocPage::query()->whereIn('slug', $slugs)->get()->keyBy('slug');
 
-        return array_map(static function (array $summary) use ($contents, $chars): array {
-            $text = trim((string) preg_replace('/\s+/u', ' ', (string) ($contents[$summary['slug']] ?? '')));
+        $sources = [];
 
-            return [
-                'slug' => $summary['slug'],
-                'title' => $summary['name'],
-                'kind' => $summary['kind'],
-                'purpose' => $summary['desc'],
-                'excerpt' => mb_substr($text, 0, $chars),
+        foreach (array_slice($slugs, 0, $limit) as $slug) {
+            $page = $pages->get($slug);
+
+            if (! $page instanceof DocPage) {
+                continue;
+            }
+
+            $sources[] = [
+                'slug' => $page->slug,
+                'title' => $page->title,
+                'kind' => $page->type,
+                'purpose' => (string) ($presenter->purpose($page) ?? ''),
+                'excerpt' => $presenter->plainText($page, $chars),
             ];
-        }, $summaries);
+        }
+
+        return $sources;
+    }
+
+    /**
+     * Pages whose body contains a phrase (or, failing that, a keyword) from the
+     * question. Phrase matches come first so "hello world" finds the tutorial.
+     *
+     * @return list<string>
+     */
+    private function bodyMatches(string $question, int $limit): array
+    {
+        $words = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($question), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $stop = ['how', 'to', 'the', 'a', 'an', 'in', 'of', 'for', 'on', 'is', 'are', 'do', 'does',
+            'i', 'we', 'you', 'with', 'and', 'or', 'my', 'me', 'what', 'when', 'where', 'why', 'can',
+            'should', 'would', 'write', 'create', 'make', 'use', 'using', 'about', 'please', 'need', 'want', 'get'];
+        $keys = array_values(array_filter(
+            $words,
+            static fn (string $word): bool => mb_strlen($word) >= 3 && ! in_array($word, $stop, true),
+        ));
+
+        if ($keys === []) {
+            return [];
+        }
+
+        // Phrases first — they are specific enough to trust.
+        $phrases = [];
+        for ($i = 0; $i < count($keys) - 1 && count($phrases) < 4; $i++) {
+            $phrases[] = $keys[$i].' '.$keys[$i + 1];
+        }
+
+        if ($phrases !== []) {
+            $matches = DocPage::query()
+                ->where(function ($query) use ($phrases): void {
+                    foreach ($phrases as $phrase) {
+                        $query->orWhere('body_html', 'like', '%'.$phrase.'%');
+                    }
+                })
+                ->limit($limit)
+                ->pluck('slug')
+                ->all();
+
+            if ($matches !== []) {
+                return $matches;
+            }
+        }
+
+        return DocPage::query()
+            ->where(function ($query) use ($keys): void {
+                foreach (array_slice($keys, 0, 3) as $key) {
+                    $query->orWhere('body_html', 'like', '%'.$key.'%');
+                }
+            })
+            ->limit($limit)
+            ->pluck('slug')
+            ->all();
+    }
+
+    /**
+     * Merge browser and server sources, deduped by slug and capped.
+     *
+     * @param  list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>  $primary
+     * @param  list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>  $secondary
+     * @return list<array{slug: string, title: string, kind: string, purpose: string, excerpt: string}>
+     */
+    private function mergeSources(array $primary, array $secondary): array
+    {
+        $limit = (int) config('assistant.sources');
+        $merged = [];
+        $seen = [];
+
+        foreach (array_merge($primary, $secondary) as $source) {
+            $slug = $source['slug'];
+
+            if (isset($seen[$slug])) {
+                continue;
+            }
+
+            $seen[$slug] = true;
+            $merged[] = $source;
+
+            if (count($merged) >= $limit) {
+                break;
+            }
+        }
+
+        return $merged;
     }
 
     /**
@@ -410,12 +503,6 @@ new class extends Component
             <p class="assistant-hint">It searches the manual and answers with links to the pages it used. Answers come from a free AI model and may be imperfect.</p>
           </div>
         @endforelse
-
-        <div class="assistant-msg assistant-msg-bot" wire:loading wire:target="ask">
-          <div class="assistant-bubble assistant-typing" aria-label="Thinking">
-            <span></span><span></span><span></span>
-          </div>
-        </div>
 
         @if ($error)
           <p class="assistant-error">{{ $error }}</p>

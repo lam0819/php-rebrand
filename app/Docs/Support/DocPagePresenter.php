@@ -78,6 +78,20 @@ final class DocPagePresenter
     }
 
     /**
+     * The page's real prose as plain text. `content` only holds a short summary
+     * (often just the signature line); the manual body lives in `body_html`, so
+     * search indexing and AI context must read from there.
+     */
+    public function plainText(DocPage $page, int $limit = 0): string
+    {
+        $html = $page->body_html ?: $page->content ?: '';
+        $text = html_entity_decode(strip_tags((string) $html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+
+        return $limit > 0 ? mb_substr($text, 0, $limit) : $text;
+    }
+
+    /**
      * @param  array<array-key, mixed>  $array
      * @return list<mixed>
      */

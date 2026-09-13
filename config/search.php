@@ -41,7 +41,7 @@ return [
         'int8' => filter_var(env('SEARCH_INT8', true), FILTER_VALIDATE_BOOL),
 
         // How much plain-text body to carry per page in the browser index.
-        'excerpt_chars' => (int) env('SEARCH_EXCERPT_CHARS', 800),
+        'excerpt_chars' => (int) env('SEARCH_EXCERPT_CHARS', 1000),
 
         // Rows per write batch. InlaySQL requires a commit to fit one WAL
         // region (~1 MiB), and batching also cuts the artifact size ~5x.
