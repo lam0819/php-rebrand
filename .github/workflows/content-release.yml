@@ -43,6 +43,9 @@ jobs:
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
+        with:
+          # Full history + tags so the release notes can list what changed.
+          fetch-depth: 0
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -81,15 +84,73 @@ jobs:
       - name: Build the browser search index
         run: php artisan search:build --fresh
 
-      - name: Record upstream revisions
-        id: upstream
+      - name: Build release notes
+        id: notes
         run: |
+          set -euo pipefail
+
           docs_sha="$(git -C storage/app/php-doc-en rev-parse HEAD 2>/dev/null || echo unknown)"
           web_sha="$(git -C storage/app/php-web rev-parse HEAD 2>/dev/null || echo unknown)"
-          {
-            echo "docs_sha=${docs_sha}"
-            echo "web_sha=${web_sha}"
-          } >> "$GITHUB_OUTPUT"
+          pages="$(sqlite3 database/database.sqlite 'select count(*) from docs_pages;' 2>/dev/null || echo '?')"
+
+          tag="${{ env.RELEASE_TAG }}"
+          prev="$(git tag --sort=-creatordate | grep -vx "$tag" | head -1 || true)"
+
+          if [ -n "$prev" ]; then
+            changes="$(git log --pretty=format:'- %s (`%h`)' "${prev}..HEAD" | head -60 || true)"
+            compare="https://github.com/${GITHUB_REPOSITORY}/compare/${prev}...${tag}"
+            if [ -z "$changes" ]; then
+              changelog="## What's changed
+
+          Content refresh only — no application code changes in this release.
+
+          [Full diff](${compare})"
+            else
+              changelog="## What's changed since \`${prev}\`
+
+          ${changes}
+
+          [Full diff](${compare})"
+            fi
+          else
+            changelog="## What's changed
+
+          $(git log --pretty=format:'- %s (`%h`)' -20)"
+          fi
+
+          title="$(git tag -l --format='%(contents:subject)' "$tag" 2>/dev/null || true)"
+          if [ -z "$title" ]; then title="$tag"; fi
+          printf '%s' "$title" > release-title.txt
+
+          cat > release-notes.md <<EOF
+          ${changelog}
+
+          ## Content
+
+          Rebuilt from the latest upstream sources:
+
+          - \`php/doc-en\` @ \`${docs_sha}\`
+          - \`php/web-php\` @ \`${web_sha}\`
+
+          **${pages}** manual pages, plus the news archive and current releases.
+
+          ## Artifacts
+
+          - \`database.sqlite.gz\` — the manual, news and releases for the server.
+          - \`manual-search.inlay.gz\` — the InlaySQL vector + BM25 index the browser downloads.
+
+          ## Install
+
+          \`\`\`bash
+          php artisan docs:pull --force
+          php artisan search:pull --force
+          \`\`\`
+
+          Content is parsed from upstream and **never hand-authored**. See [CONTRIBUTING.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CONTRIBUTING.md).
+          EOF
+
+          echo "----- release notes -----"
+          cat release-notes.md
 
       - name: Package the artifacts
         run: |
@@ -114,27 +175,6 @@ jobs:
         if: env.PUBLISH == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          NOTES: |
-            Prebuilt content, rebuilt from the latest upstream sources.
-
-            - `php/doc-en` @ `${{ steps.upstream.outputs.docs_sha }}`
-            - `php/web-php` @ `${{ steps.upstream.outputs.web_sha }}`
-
-            Artifacts:
-
-            - `database.sqlite.gz` — the manual, news and releases for the server.
-            - `manual-search.inlay.gz` — the InlaySQL vector + BM25 index the
-              browser downloads for client-side search.
-
-            Install them with:
-
-            ```bash
-            php artisan docs:pull --force
-            php artisan search:pull --force
-            ```
-
-            Content is parsed from upstream and **never hand-authored**. See
-            [CONTRIBUTING.md](https://github.com/lam0819/php-rebrand/blob/main/CONTRIBUTING.md).
         run: |
           set -euo pipefail
           tag="${{ env.RELEASE_TAG }}"
@@ -160,7 +200,7 @@ jobs:
           # Note: a 500 from the create endpoint can still create the release,
           # so never blindly retry create — re-check and then upload.
           if ! exists; then
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$NOTES" || true
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$(cat release-title.txt)" --notes-file release-notes.md || true
           fi
 
           for _ in 1 2 3 4 5 6; do
@@ -172,6 +212,9 @@ jobs:
             echo "Release $tag could not be created." >&2
             exit 1
           fi
+
+          # Keep the release body current even when the release already existed.
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --title "$(cat release-title.txt)" --notes-file release-notes.md || true
 
           echo "Uploading assets for $tag."
           retry gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber \
