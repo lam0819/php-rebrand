@@ -40,6 +40,14 @@
           A general-purpose scripting language especially suited to web development. Free and
           open source since 1995.
         </p>
+        <p class="meta maxw-32 foot-credit" style="margin-top: 12px">
+          Built with
+          <a class="accent" href="https://github.com/inlaySQL/inlaysql" target="_blank" rel="noreferrer">InlaySQL</a>
+          search and
+          <a class="accent" href="https://openrouter.ai/" target="_blank" rel="noreferrer">OpenRouter</a>
+          AI ·
+          <a class="accent" href="https://github.com/lam0819/php-rebrand" target="_blank" rel="noreferrer">Source code</a>
+        </p>
       </div>
       @foreach ($columns as $col)
         <div class="foot-col">
@@ -56,7 +64,10 @@
     </div>
     <div class="foot-bottom">
       <span class="meta">© 2001–2026 The PHP Group · Documentation licensed under CC-BY 3.0</span>
-      <span class="meta">My PHP.net · Contact · Privacy policy</span>
+      <span class="meta">
+        <a href="https://github.com/lam0819/php-rebrand" target="_blank" rel="noreferrer">Source</a> ·
+        <a href="/privacy" wire:navigate>Privacy &amp; cookies</a>
+      </span>
     </div>
   </div>
 </footer>
