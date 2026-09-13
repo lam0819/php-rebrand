@@ -1,16 +1,16 @@
 /*
- | Client-side hybrid search: InlaySQL's WASM engine, loaded lazily the first
- | time someone uses the search box, running BM25 + vector retrieval over the
- | prebuilt manual index entirely in the browser.
+ | Client-side hybrid search for the navbar: InlaySQL's WASM engine, running
+ | BM25 + vector retrieval over the prebuilt manual index entirely in the
+ | browser. The engine and index are shared with the AI assistant via
+ | search-index.js, so they are loaded once.
  |
  | Progressive enhancement: until the engine and index are ready (or if either
- | fails to load) the existing server-rendered search keeps working untouched.
- | Once ready we take over the input by stopping the event before Livewire sees
- | it and render our own results into a dedicated container.
+ | fails to load) the server-rendered search keeps working untouched. Once
+ | ready we take the input over by stopping the event before Livewire sees it.
  */
 
-const DEFAULT_INDEX = '/manual-search.inlay';
-const WASM_BASE = '/inlaysql';
+import { hybridSearch, loadSearchIndex } from './search-index.js';
+
 const LIMIT = 8;
 
 // Friendlier labels than the raw DocBook element names in the index.
@@ -26,37 +26,6 @@ const CATEGORY_LABELS = {
 const categoryLabel = (type) => CATEGORY_LABELS[type] ?? (type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Page');
 
 const states = new WeakMap();
-
-function fixVector(values) {
-  // InlaySQL's vector binder rejects JSON integers, and JSON.stringify drops
-  // the ".0" from whole floats. Nudge exact integers without changing ranking.
-  return Array.from(values, (v) => (Number.isInteger(v) ? v + 1e-7 : v));
-}
-
-async function loadEngine() {
-  const mod = await import(/* @vite-ignore */ `${WASM_BASE}/inlaysql_wasm.js`);
-  await mod.default({ module_or_path: `${WASM_BASE}/inlaysql_wasm_bg.wasm` });
-  return mod;
-}
-
-async function loadIndex(root) {
-  const url = root.dataset.searchIndex || DEFAULT_INDEX;
-  const response = await fetch(url, { headers: { Accept: 'application/octet-stream' } });
-  if (!response.ok) throw new Error(`index ${response.status}`);
-
-  const engine = await loadEngine();
-  const { Database } = engine;
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  const db = Database.open(bytes);
-
-  const table = JSON.parse(db.schema()).tables.find((t) => t.table === 'pages');
-  const vector = table?.columns.find((c) => String(c.type).startsWith('VECTOR('));
-  const match = vector ? /VECTOR\((\d+)/.exec(String(vector.type)) : null;
-  const dim = match ? Number(match[1]) : 0;
-  if (!dim) throw new Error('no vector column');
-
-  return { db, embed: engine.embed, dim };
-}
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (c) => (
@@ -105,8 +74,8 @@ function render(container, results) {
   container.classList.add('show');
 }
 
-function runQuery(state, term) {
-  const { db, embed, dim, out } = state;
+async function runQuery(state, term) {
+  const out = state.out;
 
   if (term.length < 2) {
     out.hidden = true;
@@ -114,41 +83,34 @@ function runQuery(state, term) {
     return;
   }
 
-  let embedding;
   try {
-    embedding = fixVector(Array.from(embed(term, dim)));
+    render(out, await hybridSearch(term, { limit: LIMIT, url: state.indexUrl }));
   } catch {
-    return;
+    // Leave the server-rendered fallback in place.
   }
-
-  let rows = [];
-  try {
-    const sql =
-      'SELECT slug, title, type, purpose, ' +
-      'fuse(vector_score(embedding, ?1), bm25_score(body, ?2)) AS score ' +
-      `FROM pages ORDER BY score DESC LIMIT ${LIMIT}`;
-    const result = JSON.parse(db.query(sql, JSON.stringify([embedding, term])));
-    rows = result.rows.map(([slug, title, type, purpose]) => ({ slug, title, type, purpose }));
-  } catch {
-    return;
-  }
-
-  render(out, rows);
 }
 
 function ensureState(root) {
   let state = states.get(root);
   if (state) return state;
 
-  state = { ready: false, loading: false, failed: false, timer: null, out: root.querySelector('[data-search-wasm-results]') };
+  state = {
+    ready: false,
+    loading: false,
+    failed: false,
+    timer: null,
+    indexUrl: root.dataset.searchIndex || '/manual-search.inlay',
+    out: root.querySelector('[data-search-wasm-results]'),
+  };
   states.set(root, state);
 
   const start = () => {
     if (state.ready || state.loading || state.failed || !state.out) return;
     state.loading = true;
-    loadIndex(root)
-      .then((engine) => {
-        Object.assign(state, engine, { ready: true, loading: false });
+    loadSearchIndex(state.indexUrl)
+      .then(() => {
+        state.ready = true;
+        state.loading = false;
         // If the visitor already typed while the engine was loading, answer now.
         const input = root.querySelector('[data-search]');
         if (input && input.value.trim().length >= 2) {

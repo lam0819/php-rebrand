@@ -5,6 +5,7 @@
  */
 
 import './search-wasm.js';
+import './chat-widget.js';
 
 const STORAGE_KEY = 'php-theme';
 

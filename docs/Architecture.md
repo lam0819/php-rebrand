@@ -304,6 +304,20 @@ always line up. The full manual is ~48 MB raw and ~5 MB gzipped. Swapping to a
 real embedding model means running it on both sides; the builder is otherwise
 embedder-agnostic.
 
+### The AI assistant
+
+The "Ask AI" widget layers a server-side answer on top of the same client-side
+retrieval. [`chat-widget.js`](../resources/js/chat-widget.js) runs a hybrid query
+in the browser, then dispatches `ask-ai` with the retrieved pages; the Livewire
+component calls [`ManualAnswerAgent`](../app/Ai/ManualAnswerAgent.php) through
+`laravel/ai` with the OpenRouter provider.
+
+The agent is asked for **structured output** — `{answer, citations: [int]}` — so
+the prose and its sources stay separate. Citations are indices into our own page
+list, never model-authored URLs, and the Markdown is stripped of raw HTML before
+rendering. The key stays server-side, per-IP throttling protects the model quota,
+and the widget is hidden unless `OPENROUTER_API_KEY` is configured.
+
 ---
 
 ## 9. Error handling

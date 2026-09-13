@@ -168,6 +168,39 @@ At runtime `search:pull` installs the published artifact and
 first time the search box is focused and falls back to the server-side FTS5
 search if the engine can't load.
 
+### Ask AI (retrieval-augmented assistant)
+
+The floating **Ask AI** widget answers questions from the manual. Retrieval
+runs in the browser against the same InlaySQL index; the retrieved pages and the
+question are handed to a Livewire component, which calls a model server-side and
+renders a friendly answer with links to the pages it used:
+
+```
+browser: question ──► InlaySQL WASM hybrid search ──► top 6 pages
+       └────────────► Livewire ask-ai ──► laravel/ai ──► OpenRouter (server-side key)
+                                              └── answer + citation indices
+       ◄──────────── answer (Markdown) + linked source pages
+```
+
+- The API key never reaches the client — the call is made by the server.
+- Citations are **indices**, mapped back to our own page URLs; the model never
+  authors links. HTML in the answer is stripped before rendering.
+- Per-IP rate limits (`assistant.throttle`) and a max question length protect the
+  free tier.
+- If the browser can't load the index, the component falls back to server-side
+  FTS5 retrieval.
+
+It is **off unless `OPENROUTER_API_KEY` is set**. Configure it in `.env`:
+
+```dotenv
+OPENROUTER_API_KEY=sk-or-...
+ASSISTANT_MODEL=nvidia/nemotron-3-super-120b-a12b:free
+```
+
+Any OpenRouter model id works; the default is a free one. See
+[`config/assistant.php`](config/assistant.php) for the retrieval count, excerpt
+size and limits.
+
 ### Keeping in sync with upstream
 
 `docs:sync` and `web:sync` are **incremental** — unchanged files are skipped by

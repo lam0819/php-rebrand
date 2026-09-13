@@ -57,6 +57,10 @@
   </main>
   <x-site-footer />
 
+  @if (config('assistant.enabled'))
+    <livewire:ask />
+  @endif
+
   @livewireScripts
   <script>
     // Register the service worker for PWA / offline-of-visited-pages.
