@@ -1,5 +1,18 @@
 # PHP, evolved — a modern rebrand of php.net
 
+[![PHP 8.4](https://img.shields.io/badge/PHP-8.4-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
+[![Laravel 12](https://img.shields.io/badge/Laravel-12-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://laravel.com)
+[![Livewire 4](https://img.shields.io/badge/Livewire-4-4E56A6?style=flat-square&logo=livewire&logoColor=white)](https://livewire.laravel.com)
+[![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
+[![InlaySQL](https://img.shields.io/badge/InlaySQL-vector%20%2B%20BM25-6E56CF?style=flat-square)](https://github.com/inlaySQL/inlaysql)
+[![OpenRouter](https://img.shields.io/badge/OpenRouter-free%20models-6467F2?style=flat-square)](https://openrouter.ai)
+[![Laravel Cloud](https://img.shields.io/badge/Laravel_Cloud-deployed-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://cloud.laravel.com)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vite.dev)
+[![Pest](https://img.shields.io/badge/Pest-3-F28D1A?style=flat-square)](https://pestphp.com)
+[![Playwright](https://img.shields.io/badge/Playwright-e2e-2EAD33?style=flat-square&logo=playwright&logoColor=white)](https://playwright.dev)
+[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/lam0819/php-rebrand/actions)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square)](LICENSE)
+
 A fast, faithful, modern rebuild of [php.net](https://www.php.net) — the manual,
 the news, and the downloads — rendered from the **official PHP source repositories**
 so it stays correct and current without hand-maintained content.
@@ -9,9 +22,10 @@ application whose content is parsed directly from upstream, wrapped in a modern
 design, full-text search, a PWA, and AI-agent-friendly endpoints.
 
 - ⚡ **Server-rendered** (Livewire v4 + Blade) — every page is crawlable HTML, fast to load and display.
-- 🔎 **Instant search** over the whole manual (SQLite FTS5, bm25-ranked).
+- 🔎 **Instant search** — [InlaySQL](https://github.com/inlaySQL/inlaysql) (vector + BM25) running **in the browser via WASM**, with SQLite FTS5 as the server fallback.
 - 📦 **Single SQLite artifact** — the whole manual ships as one read-only file; no database server needed in production.
-- 🤖 **AI-friendly** — `/llms.txt` index + a Markdown view of every page at `/manual/{slug}.md`.
+- 🤖 **Ask AI** — retrieval-augmented answers from free [OpenRouter](https://openrouter.ai) models, with links back to the manual.
+- 🧠 **AI-friendly** — `/llms.txt` index + a Markdown view of every page at `/manual/{slug}.md`.
 - 📱 **PWA** — installable, works offline for visited pages.
 
 ---
@@ -55,17 +69,27 @@ rebuild. When upstream changes, a sync run brings the site up to date.
 The import pipeline is layered and source-agnostic after the parse step — see
 [`docs/Architecture.md`](docs/Architecture.md) for the full design.
 
+Search is a **second artifact**: the same pages are baked into a single InlaySQL
+file (BM25 + vector index) and shipped alongside the SQLite database, then
+queried in the visitor's browser — see
+[Browser search](#browser-search-inlaysql-vector--bm25).
+
 ### Tech stack
 
 | Concern | Choice |
 |---|---|
-| Framework | Laravel 12, PHP 8.4 (strict types throughout) |
-| Frontend | Livewire v4 + Blade single-file components, `livewire/blaze` compile-time folding |
-| Styling | Hand-written CSS design system (OKLch tokens), built with Vite |
-| Database | SQLite — a single read-only file in production |
-| Search | SQLite FTS5 (bm25), with a LIKE fallback |
-| Tests / Analysis / Style | Pest · PHPStan (max level, Larastan) · Laravel Pint |
-| Container | `serversideup/php:8.4-fpm-nginx` |
+| Language / Framework | PHP 8.4 (strict types throughout) · Laravel 12 |
+| Server UI | [Livewire](https://livewire.laravel.com) v4 + Blade single-file components, `livewire/blaze` compile-time folding |
+| Styling | Hand-written CSS design system (OKLch tokens), built with [Vite](https://vite.dev) 7 |
+| App database | [SQLite](https://sqlite.org) — one prebuilt, effectively read-only file in production (`database.sqlite.gz`) |
+| Search | [InlaySQL](https://github.com/inlaySQL/inlaysql) — one file with a **BM25 + HNSW vector** index, queried **client-side via WASM**; SQLite FTS5 is the server fallback |
+| AI assistant | [`laravel/ai`](https://github.com/laravel/ai) → [OpenRouter](https://openrouter.ai) free models, three-model failover, retrieval from the InlaySQL index |
+| Content pipeline | DocBook XML (`php/doc-en`) + Atom / `version.inc` (`php/web-php`) parsers, `docs:*` · `web:*` · `search:*` Artisan commands |
+| Tests | [Pest](https://pestphp.com) 3 (unit + feature) · [Playwright](https://playwright.dev) (browser e2e) |
+| Static analysis / style | PHPStan (max level, Larastan) · [Laravel Pint](https://laravel.com/docs/pint) |
+| CI / CD | GitHub Actions — tests, tag-driven content release, daily upstream check |
+| Hosting | [Laravel Cloud](https://cloud.laravel.com) (managed), deployed via a deploy hook |
+| Container (optional) | `serversideup/php:8.4-fpm-nginx` (Docker) |
 
 ---
 
@@ -367,6 +391,11 @@ renders wrong, fix the parser or renderer so every page benefits.
   design system, layouts, and tokens.
 - **Built 100% by AI** — every line of application code was written by
   **Claude** (Anthropic) and **Codex** (OpenAI), under human direction.
+- **Search engine** — [InlaySQL](https://github.com/inlaySQL/inlaysql) (AGPLv3
+  or commercial), embedded in the browser via its WASM build. This project is
+  its first integration.
+- **AI models** — routed through [OpenRouter](https://openrouter.ai) using its
+  free model tier ([`laravel/ai`](https://github.com/laravel/ai) client).
 - **Content** belongs to the PHP project and its contributors, sourced from
   [`php/doc-en`](https://github.com/php/doc-en) and
   [`php/web-php`](https://github.com/php/web-php). PHP, the PHP logo, and the
