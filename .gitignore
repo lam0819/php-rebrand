@@ -24,6 +24,8 @@
 /storage/app/manual-search.inlay.gz
 /storage/app/search-export.ndjson
 /public/inlaysql
+/playwright-report
+/test-results
 /vendor
 Homestead.json
 Homestead.yaml

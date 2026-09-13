@@ -1,0 +1,70 @@
+name: Upstream check
+
+# A small daily check: has php/doc-en or php/web-php moved since the content we
+# last released? If so, dispatch the Content release workflow (which rebuilds
+# the SQLite manual + browser search index, publishes them, and triggers the
+# Laravel Cloud deploy hook).
+#
+# We dispatch rather than push a tag because events triggered by the default
+# GITHUB_TOKEN do not start other workflows.
+
+on:
+  schedule:
+    # 03:17 UTC daily — off the hour to avoid the cron rush.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: upstream-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Compare upstream to the latest release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check upstream revisions
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          upstream_docs="$(git ls-remote https://github.com/php/doc-en master | cut -f1)"
+          upstream_web="$(git ls-remote https://github.com/php/web-php master | cut -f1)"
+
+          # The release body records the revisions baked into the artifacts.
+          body="$(gh release view --repo "$GITHUB_REPOSITORY" --json body --jq .body 2>/dev/null || echo '')"
+          released_docs="$(printf '%s' "$body" | grep -oE 'php/doc-en` @ `[0-9a-f]{40}' | grep -oE '[0-9a-f]{40}' | head -1 || true)"
+          released_web="$(printf '%s' "$body" | grep -oE 'php/web-php` @ `[0-9a-f]{40}' | grep -oE '[0-9a-f]{40}' | head -1 || true)"
+
+          echo "php/doc-en : ${released_docs:-none} -> ${upstream_docs}"
+          echo "php/web-php: ${released_web:-none} -> ${upstream_web}"
+
+          if [ "$upstream_docs" != "$released_docs" ] || [ "$upstream_web" != "$released_web" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Upstream has new content." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Up to date with the latest release." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Dispatch a content release
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          tag="content-$(date -u +%Y.%m.%d)"
+          echo "Dispatching Content release for $tag" >> "$GITHUB_STEP_SUMMARY"
+          gh workflow run content-release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$DEFAULT_BRANCH" \
+            -f tag="$tag"

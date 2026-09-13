@@ -8,12 +8,19 @@ name: Content release
 # Usage:
 #   git tag v1.2.0 && git push origin v1.2.0   # build + attach to the release
 #   or run this workflow manually              # build + keep as a workflow artifact
+#   or dispatch with a `tag` input (the daily Upstream check does this)
 
 on:
   push:
     tags:
       - 'v*'
+      - 'content-*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create/publish (empty = workflow artifact only)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -27,6 +34,11 @@ jobs:
     name: Build content database
     runs-on: ubuntu-latest
     timeout-minutes: 120
+
+    env:
+      # A tag push uses its tag; a manual/daily dispatch uses the `tag` input.
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+      PUBLISH: ${{ github.ref_type == 'tag' || github.event.inputs.tag != '' }}
 
     steps:
       - name: Check out the repository
@@ -99,9 +111,10 @@ jobs:
           retention-days: 14
 
       - name: Publish release assets
-        if: startsWith(github.ref, 'refs/tags/')
+        if: env.PUBLISH == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             database.sqlite.gz
             database.sqlite.gz.sha256
@@ -137,7 +150,7 @@ jobs:
       # Application > Environment > Settings > Deployments. With no secret set,
       # this step is a no-op.
       - name: Trigger Laravel Cloud deploy
-        if: startsWith(github.ref, 'refs/tags/')
+        if: env.PUBLISH == 'true'
         env:
           DEPLOY_HOOK: ${{ secrets.LARAVEL_CLOUD_DEPLOY_HOOK }}
         run: |

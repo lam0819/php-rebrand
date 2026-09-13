@@ -83,5 +83,5 @@ new class extends Component
   @endif
 
   {{-- Filled by resources/js/search-wasm.js once the in-browser engine is ready. --}}
-  <div class="search-results search-wasm-results" data-search-wasm-results hidden></div>
+  <div class="search-results search-wasm-results" data-search-wasm-results wire:ignore hidden></div>
 </div>
