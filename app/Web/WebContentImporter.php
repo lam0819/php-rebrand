@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Web;
 
-use App\Web\DTO\ReleaseData;
 use App\Web\Models\ChangelogRelease;
 use App\Web\Models\NewsItem;
 use App\Web\Models\PhpRelease;
@@ -31,8 +30,7 @@ final class WebContentImporter
      */
     public function importNews(string $sourcePath, bool $force = false): array
     {
-        $dir = rtrim($sourcePath, '/').'/archive/entries';
-        $files = glob($dir.'/*.xml') ?: [];
+        $files = $this->newsFiles($sourcePath);
 
         $imported = 0;
         $skipped = 0;
@@ -68,6 +66,26 @@ final class WebContentImporter
         }
 
         return ['imported' => $imported, 'skipped' => $skipped];
+    }
+
+    /**
+     * Resolve the news archive directory across upstream layout changes.
+     *
+     * @return list<string>
+     */
+    private function newsFiles(string $sourcePath): array
+    {
+        $root = rtrim($sourcePath, '/');
+
+        foreach (config()->array('web.news.entries_paths') as $relative) {
+            $files = glob($root.'/'.trim((string) $relative, '/').'/*.xml') ?: [];
+
+            if ($files !== []) {
+                return $files;
+            }
+        }
+
+        return [];
     }
 
     /**

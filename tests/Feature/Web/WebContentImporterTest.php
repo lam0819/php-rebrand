@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Web\Models\NewsItem;
 use App\Web\Models\PhpRelease;
 use App\Web\WebContentImporter;
+use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
     $this->path = base_path('tests/Fixtures/web-php');
@@ -21,6 +22,24 @@ it('imports news entries from the archive', function () {
     expect($release->title)->toBe('PHP 8.5.7 Released!')
         ->and($release->category)->toBe('releases')
         ->and($release->published_at->format('Y-m-d'))->toBe('2026-06-04');
+});
+
+it('finds news entries after upstream moved them under public/', function () {
+    $root = sys_get_temp_dir().'/web-php-'.uniqid();
+    mkdir($root.'/public/archive/entries', 0o755, true);
+
+    foreach (glob(base_path('tests/Fixtures/web-php/archive/entries/*.xml')) ?: [] as $file) {
+        copy($file, $root.'/public/archive/entries/'.basename($file));
+    }
+
+    try {
+        $result = $this->importer->importNews($root);
+
+        expect($result['imported'])->toBe(2)
+            ->and(NewsItem::query()->count())->toBe(2);
+    } finally {
+        File::deleteDirectory($root);
+    }
 });
 
 it('imports the current release of each active branch', function () {

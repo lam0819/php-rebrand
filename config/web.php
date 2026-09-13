@@ -16,7 +16,16 @@ return [
         'path' => env('WEB_SOURCE_PATH', storage_path('app/php-web')),
 
         // We only need these two directories; a sparse checkout keeps the clone tiny.
-        'sparse_paths' => ['archive/entries', 'include'],
+        'sparse_paths' => ['public/archive/entries', 'include'],
+    ],
+
+    /*
+    | Upstream moved the Atom news archive from `archive/entries` to
+    | `public/archive/entries`. We check every candidate so a future layout
+    | change can never silently zero out the news feed.
+    */
+    'news' => [
+        'entries_paths' => ['public/archive/entries', 'archive/entries'],
     ],
 
     /*

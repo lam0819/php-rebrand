@@ -7,10 +7,11 @@ namespace App\Web\Models;
 use Database\Factories\NewsItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * A single news/announcement entry mirrored from php/web-php's
- * `archive/entries/*.xml` Atom archive.
+ * `public/archive/entries/*.xml` Atom archive.
  *
  * @property int $id
  * @property string $entry_id
@@ -21,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $body_html
  * @property string|null $link
  * @property string|null $via
- * @property \Illuminate\Support\Carbon $published_at
+ * @property Carbon $published_at
  * @property string|null $source_hash
  */
 final class NewsItem extends Model

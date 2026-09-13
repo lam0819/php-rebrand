@@ -45,12 +45,14 @@ final class FetchWebContent extends Command
                 'git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse',
                 '--branch', $branch, $repo, $path,
             ]);
+        }
 
-            if ($result->successful()) {
-                $result = Process::path($path)->timeout(600)->run(
-                    array_merge(['git', 'sparse-checkout', 'set'], $sparsePaths),
-                );
-            }
+        // Reapply the sparse paths so existing checkouts pick up layout changes
+        // (e.g. upstream moving archive/entries → public/archive/entries).
+        if ($result->successful()) {
+            $result = Process::path($path)->timeout(600)->run(
+                array_merge(['git', 'sparse-checkout', 'set'], $sparsePaths),
+            );
         }
 
         if ($result->failed()) {

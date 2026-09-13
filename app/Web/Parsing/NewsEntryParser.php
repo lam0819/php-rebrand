@@ -11,8 +11,8 @@ use DOMElement;
 use RuntimeException;
 
 /**
- * Parses a single Atom `<entry>` file from php/web-php's `archive/entries/`
- * directory into a {@see NewsEntryData}.
+ * Parses a single Atom `<entry>` file from php/web-php's
+ * `public/archive/entries/` directory into a {@see NewsEntryData}.
  *
  * Each file is one Atom entry in the `http://www.w3.org/2005/Atom` namespace;
  * the body lives in `<content type="xhtml">` wrapped in an XHTML `<div>`.

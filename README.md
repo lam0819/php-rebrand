@@ -181,16 +181,25 @@ sources and attaches it to the GitHub Release (see
 git tag v1.2.0 && git push origin v1.2.0
 ```
 
-The release then carries `database.sqlite.gz` (+ `.sha256`). Install it anywhere
-with a single command — no clone of `php/doc-en` required:
+The release then carries the freshly rebuilt `database.sqlite.gz` (+ `.sha256`),
+produced from the latest `php/doc-en` + `php/web-php`. **Download it and replace
+your SQLite** in one command — no clone of the upstream sources required:
 
 ```bash
-php artisan docs:pull --force     # downloads, verifies and decompresses the artifact
+php artisan docs:pull --force     # download → verify sha256 → replace database/database.sqlite
+```
+
+Prefer to do it by hand? Grab
+[`database.sqlite.gz`](https://github.com/lam0819/php-rebrand/releases/latest/download/database.sqlite.gz)
+from the latest release and run:
+
+```bash
+gunzip -c database.sqlite.gz > database/database.sqlite
 ```
 
 `docs:pull` resolves the configured `DOCS_ARTIFACT_URL` (defaults to the "latest
-release" asset), verifies the sha256 when available, and writes
-`database/database.sqlite` atomically.
+release" asset), verifies the sha256 when available, and replaces
+`database/database.sqlite` atomically (pass `--url=...` to pin a specific tag).
 
 ### Any PHP host / Laravel Cloud
 
