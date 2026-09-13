@@ -153,13 +153,27 @@ jobs:
             done
           }
 
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $tag exists; uploading assets."
-          else
-            retry gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$NOTES"
-            echo "Created release $tag."
+          exists() {
+            gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+          }
+
+          # Note: a 500 from the create endpoint can still create the release,
+          # so never blindly retry create — re-check and then upload.
+          if ! exists; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --notes "$NOTES" || true
           fi
 
+          for _ in 1 2 3 4 5 6; do
+            exists && break
+            sleep 5
+          done
+
+          if ! exists; then
+            echo "Release $tag could not be created." >&2
+            exit 1
+          fi
+
+          echo "Uploading assets for $tag."
           retry gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber \
             database.sqlite.gz database.sqlite.gz.sha256 \
             manual-search.inlay.gz manual-search.inlay.gz.sha256
