@@ -209,6 +209,28 @@ with PHP-FPM + a web server. Run the scheduler (`php artisan schedule:run` every
 minute, or `schedule:work`) if you want the site to keep itself current with
 upstream automatically.
 
+#### Auto-deploy from a version tag (deploy hook)
+
+Laravel Cloud can deploy from a **deploy hook** URL instead of a push. It has no
+CLI command — create it in the dashboard: **Application → Environment → Settings
+→ Deployments → enable "Deploy hook" → copy the URL**. The URL is the only
+credential, so store it as a secret.
+
+1. In GitHub: **Settings → Secrets and variables → Actions → New repository
+   secret**, named `LARAVEL_CLOUD_DEPLOY_HOOK`, with the URL as the value.
+2. Set the environment's **build command** to `php artisan docs:pull --force`.
+3. `git push origin v1.2.0` — the [release workflow](.github/workflows/content-release.yml)
+   builds the new SQLite, attaches it to the release, then `POST`s the hook so
+   Laravel Cloud deploys with the fresh content.
+
+Trigger it by hand any time (optionally pinning a commit on the environment's
+branch):
+
+```bash
+curl -X POST "https://your-deploy-hook-url"
+curl -X POST "https://your-deploy-hook-url?commit_hash=abc123def456"
+```
+
 ---
 
 ## Contributing — pull requests only

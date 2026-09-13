@@ -107,3 +107,21 @@ jobs:
 
             Content is parsed from upstream and **never hand-authored**. See
             [CONTRIBUTING.md](https://github.com/lam0819/php-rebrand/blob/main/CONTRIBUTING.md).
+
+      # Optional: kick a Laravel Cloud deployment once the fresh artifact is
+      # published. Set the environment's deploy hook URL as a repository secret
+      # named LARAVEL_CLOUD_DEPLOY_HOOK (Settings > Secrets and variables >
+      # Actions). The deploy hook has no CLI — enable it in Laravel Cloud under
+      # Application > Environment > Settings > Deployments. With no secret set,
+      # this step is a no-op.
+      - name: Trigger Laravel Cloud deploy
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          DEPLOY_HOOK: ${{ secrets.LARAVEL_CLOUD_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "LARAVEL_CLOUD_DEPLOY_HOOK not set; skipping deployment."
+            exit 0
+          fi
+          curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"
+          echo "Triggered Laravel Cloud deployment."
