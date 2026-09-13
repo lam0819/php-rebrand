@@ -6,6 +6,7 @@
 
 import './search-wasm.js';
 import './chat-widget.js';
+import './cookie-consent.js';
 
 const STORAGE_KEY = 'php-theme';
 

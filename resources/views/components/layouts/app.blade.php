@@ -61,6 +61,8 @@
     <livewire:ask />
   @endif
 
+  <x-cookie-consent />
+
   @livewireScripts
   <script>
     // Register the service worker for PWA / offline-of-visited-pages.

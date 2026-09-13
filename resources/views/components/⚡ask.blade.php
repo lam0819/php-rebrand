@@ -15,13 +15,17 @@ new class extends Component
 
     /**
      * The conversation, oldest first. User turns carry `text`; assistant turns
-     * carry rendered `html`, the `model` that answered, and `sources`.
+     * carry the raw `text`, rendered `html`, the `model` that answered, and
+     * `sources`.
      *
      * @var list<array<string, mixed>>
      */
     public array $messages = [];
 
     public ?string $error = null;
+
+    /** History is capped so localStorage cannot grow without bound. */
+    public const MAX_MESSAGES = 20;
 
     public function toggle(): void
     {
@@ -32,6 +36,76 @@ new class extends Component
     {
         $this->messages = [];
         $this->error = null;
+    }
+
+    /**
+     * A compact, storage-friendly view of the conversation for the browser.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function history(): array
+    {
+        return array_map(static function (array $message): array {
+            return $message['role'] === 'user'
+                ? ['role' => 'user', 'text' => (string) ($message['text'] ?? '')]
+                : [
+                    'role' => 'assistant',
+                    'text' => (string) ($message['text'] ?? ''),
+                    'model' => $message['model'] ?? null,
+                    'sources' => $message['sources'] ?? [],
+                ];
+        }, $this->messages);
+    }
+
+    /**
+     * Restore a conversation persisted in the browser. Only the raw fields are
+     * trusted — HTML is rebuilt here from sanitized Markdown — and a live
+     * conversation is never overwritten.
+     *
+     * @param  array<int, mixed>  $messages
+     */
+    #[On('restore-ai')]
+    public function restore(array $messages): void
+    {
+        if ($this->messages !== []) {
+            return;
+        }
+
+        $restored = [];
+
+        foreach (array_slice($messages, -self::MAX_MESSAGES) as $message) {
+            if (! is_array($message)) {
+                continue;
+            }
+
+            $text = is_string($message['text'] ?? null) ? trim($message['text']) : '';
+
+            if ($text === '') {
+                continue;
+            }
+
+            if (($message['role'] ?? '') === 'user') {
+                $restored[] = ['role' => 'user', 'text' => mb_substr($text, 0, 1000)];
+
+                continue;
+            }
+
+            if (($message['role'] ?? '') !== 'assistant') {
+                continue;
+            }
+
+            $sources = $this->normaliseSources(is_array($message['sources'] ?? null) ? $message['sources'] : []);
+
+            $restored[] = [
+                'role' => 'assistant',
+                'text' => mb_substr($text, 0, 8000),
+                'html' => $this->renderAnswer($text, $sources),
+                'model' => is_string($message['model'] ?? null) ? mb_substr($message['model'], 0, 120) : null,
+                'sources' => $sources,
+            ];
+        }
+
+        $this->messages = $restored;
     }
 
     /**
@@ -99,6 +173,7 @@ new class extends Component
 
         $this->messages[] = [
             'role' => 'assistant',
+            'text' => $result['text'],
             'html' => $this->renderAnswer($result['text'], $sources),
             'model' => $result['model'],
             'sources' => $this->citedSources($sources, $result['text']),
@@ -269,12 +344,12 @@ new class extends Component
     }
 }; ?>
 
-<div class="assistant" data-assistant>
+<div class="assistant" data-assistant data-ai-history="{{ json_encode($this->history(), JSON_UNESCAPED_SLASHES) }}">
   <button
     type="button"
     class="assistant-fab"
     wire:click="toggle"
-    aria-label="Ask AI about the manual"
+    aria-label="{{ $open ? 'Close the assistant' : 'Ask AI about the manual' }}"
     aria-expanded="{{ $open ? 'true' : 'false' }}"
   >
     @if ($open)
@@ -285,16 +360,22 @@ new class extends Component
     <span class="assistant-fab-label">Ask AI</span>
   </button>
 
-  @if ($open)
-    <div class="assistant-panel" data-assistant-panel>
+    <div class="assistant-panel {{ $open ? 'open' : '' }}" data-assistant-panel aria-hidden="{{ $open ? 'false' : 'true' }}">
       <div class="assistant-head">
         <div class="assistant-head-title">
           <span class="assistant-dot" aria-hidden="true"></span>
           <strong>Ask the manual</strong>
         </div>
-        @if ($messages !== [])
-          <button type="button" class="assistant-clear" wire:click="clear">Clear</button>
-        @endif
+        <div class="assistant-tools">
+          <div class="assistant-sizes" role="group" aria-label="Panel size">
+            <button type="button" class="assistant-size" data-assistant-size="sm" aria-label="Small" title="Small">S</button>
+            <button type="button" class="assistant-size" data-assistant-size="md" aria-label="Medium" title="Medium">M</button>
+            <button type="button" class="assistant-size" data-assistant-size="lg" aria-label="Large" title="Large">L</button>
+          </div>
+          @if ($messages !== [])
+            <button type="button" class="assistant-clear" wire:click="clear">Clear</button>
+          @endif
+        </div>
       </div>
 
       <div class="assistant-messages" data-assistant-messages>
@@ -331,7 +412,9 @@ new class extends Component
         @endforelse
 
         <div class="assistant-msg assistant-msg-bot" wire:loading wire:target="ask">
-          <div class="assistant-bubble assistant-typing"><span></span><span></span><span></span></div>
+          <div class="assistant-bubble assistant-typing" aria-label="Thinking">
+            <span></span><span></span><span></span>
+          </div>
         </div>
 
         @if ($error)
@@ -347,12 +430,10 @@ new class extends Component
           maxlength="{{ (int) config('assistant.max_question_chars') }}"
           autocomplete="off"
           aria-label="Your question"
-          @if ($messages === []) autofocus @endif
         />
         <button type="submit" class="assistant-send" aria-label="Send" wire:loading.attr="disabled" wire:target="ask">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
         </button>
       </form>
     </div>
-  @endif
 </div>

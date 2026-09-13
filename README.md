@@ -190,7 +190,9 @@ browser: question ──► InlaySQL WASM hybrid search ──► top 6 pages
 - Citations are **indices**, mapped back to our own page URLs; the model never
   authors links. HTML in the answer is stripped before rendering.
 - It's a chat: the question appears instantly, a typing indicator runs, and the
-  answer streams into a message bubble with its sources.
+  answer lands in a message bubble with its sources. The panel fades/slides
+  open, has small/medium/large sizes, and your conversation is kept in
+  `localStorage` (with a **Clear** button) so it survives a reload.
 - Per-IP rate limits (`assistant.throttle`) and a max question length protect the
   free tier.
 - If the browser can't load the index, the component falls back to server-side
@@ -208,6 +210,14 @@ ASSISTANT_MODEL_FALLBACK_2=nex-agi/nex-n2.5-mini:free
 Any OpenRouter model ids work; the defaults are free ones. See
 [`config/assistant.php`](config/assistant.php) for the retrieval count, excerpt
 size, timeouts and limits.
+
+### Privacy & cookies
+
+The site uses only essential cookies (session, CSRF) plus local storage for
+theme, panel size, assistant history, and the consent choice. A small
+non-blocking consent banner records the visitor's decision without setting any
+non-essential cookie first, and [`/privacy`](routes/web.php) explains what is
+stored and how the assistant uses OpenRouter.
 
 ### Keeping in sync with upstream
 

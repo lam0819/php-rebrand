@@ -30,6 +30,7 @@ Route::get('/news/{entry}', [NewsController::class, 'show'])->name('news.show');
 Route::get('/changelog', [ChangelogController::class, 'index'])->name('changelog');
 Route::get('/changelog/{version}', [ChangelogController::class, 'show'])->name('changelog.show')->where('version', '[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9.-]*');
 Route::view('/get-involved', 'pages.get-involved')->name('get-involved');
+Route::view('/privacy', 'pages.privacy')->name('privacy');
 Route::view('/offline', 'offline')->name('offline');
 
 // Prebuilt browser search index (InlaySQL vector + BM25).

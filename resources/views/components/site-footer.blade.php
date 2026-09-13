@@ -17,6 +17,7 @@
             ['label' => 'The Foundation', 'href' => 'https://thephp.foundation/', 'external' => true],
             ['label' => 'Mailing lists', 'href' => 'https://www.php.net/mailing-lists.php', 'external' => true],
             ['label' => 'News & events', 'href' => '/news'],
+            ['label' => 'Privacy & cookies', 'href' => '/privacy'],
         ]],
         ['title' => 'Social', 'links' => [
             ['label' => 'Mastodon', 'href' => 'https://phpc.social/@php', 'external' => true],

@@ -44,6 +44,38 @@ it('answers from the retrieved pages, links the cited source and names the model
         ->assertSee('/manual/reference-strings-functions-str-replace', escape: false);
 });
 
+it('restores a conversation persisted in the browser without trusting its html', function () {
+    Livewire::test('ask')
+        ->call('restore', [
+            ['role' => 'user', 'text' => 'How do I replace a string?'],
+            [
+                'role' => 'assistant',
+                'text' => 'Use str_replace [1] <script>alert(1)</script>',
+                'model' => 'test/model:free',
+                'sources' => assistantContext(),
+            ],
+        ])
+        ->assertSet('messages.0.text', 'How do I replace a string?')
+        ->assertSet('messages.1.role', 'assistant')
+        ->assertSet('messages.1.model', 'test/model:free')
+        ->assertSee('/manual/reference-strings-functions-str-replace', escape: false)
+        ->assertDontSee('<script>', escape: false);
+});
+
+it('exposes a compact history for storage', function () {
+    ManualAnswerAgent::fake(['Use str_replace [1].']);
+
+    $component = Livewire::test('ask')
+        ->call('ask', 'How do I replace a string?', assistantContext());
+
+    $history = $component->instance()->history();
+
+    expect($history)->toHaveCount(2)
+        ->and($history[0])->toBe(['role' => 'user', 'text' => 'How do I replace a string?'])
+        ->and($history[1]['role'])->toBe('assistant')
+        ->and($history[1])->not->toHaveKey('html');
+});
+
 it('strips raw html from the model answer', function () {
     ManualAnswerAgent::fake(['Hello <script>alert(1)</script> there [1]']);
 
