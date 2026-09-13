@@ -44,6 +44,13 @@ parser or the renderer so every page benefits — never patch the output.
    composer test        # Pest
    composer analyse     # PHPStan (max level)
    vendor/bin/pint      # Pint, apply formatting
+   npm run test:e2e     # Playwright browser smoke test (needs the search index)
+   ```
+   The browser search needs its engine and index. For the end-to-end test,
+   build them once:
+   ```bash
+   bash scripts/inlaysql/install-wasm.sh
+   php artisan search:build --fresh
    ```
 5. **Open a pull request** against `main` with:
    - what the change does and **why**,

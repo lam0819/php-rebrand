@@ -29,14 +29,14 @@ flowchart LR
         H
         I
         R[Renderer<br/>future]
-        S[Search index<br/>future]
+        S[InlaySQL search index]
     end
 
     H -.-> R
-    H -.-> S
+    H --> S
 
     classDef future stroke-dasharray: 4 3;
-    class R,S future;
+    class R future;
 ```
 
 Everything left of the `DocumentParser` is XML-specific. Everything from
@@ -263,7 +263,50 @@ database at all.
 
 ---
 
-## 8. Error handling
+## 8. Browser search (InlaySQL WASM)
+
+Search does not run on the server. The manual is baked at build time into a
+single [InlaySQL](https://github.com/inlaySQL/inlaysql) file — one table with a
+BM25 index over the text and an HNSW index over a vector — and queried in the
+visitor's browser by the WASM build of the same engine. There is no search
+service and no per-keystroke request.
+
+```mermaid
+flowchart LR
+    P[(docs_pages)] --> E[search:export<br/>NDJSON]
+    E --> B[build-index.mjs<br/>WASM embed + insert]
+    B --> I[manual-search.inlay<br/>BM25 + HNSW]
+    I --> C[SearchIndexController<br/>/manual-search.inlay.gz]
+    C --> W[search-wasm.js<br/>lazy, first focus]
+    W --> Q[hybrid results<br/>fuse vector + bm25]
+```
+
+- [`ExportSearchIndex`](../app/Console/Commands/ExportSearchIndex.php) streams
+  `slug, title, type, purpose, excerpt` from `docs_pages` to NDJSON.
+- [`scripts/inlaysql/build-index.mjs`](../scripts/inlaysql/build-index.mjs) loads
+  the WASM bundle in Node, embeds every page with the engine's own `embed()`, and
+  writes the index in batched transactions. Batching is not an optimisation
+  only: a commit must fit InlaySQL's one-megabyte write-ahead region, and it cuts
+  the file roughly 5×.
+- [`BuildSearchIndex`](../app/Console/Commands/BuildSearchIndex.php) orchestrates
+  export + build; [`PullSearchIndex`](../app/Console/Commands/PullSearchIndex.php)
+  installs the published artifact next to the SQLite manual.
+- [`SearchIndexController`](../app/Http/Controllers/SearchIndexController.php)
+  streams the gzipped artifact at `/manual-search.inlay`.
+- [`resources/js/search-wasm.js`](../resources/js/search-wasm.js) lazy-loads the
+  engine on first focus and takes the input over from Livewire; the server-side
+  FTS5 search ([`DocSearch`](../app/Docs/Search/DocSearch.php)) remains the
+  fallback when the engine or index is unavailable.
+
+The corpus and the query are embedded by **the same function** — Rust trigram
+hashing, run in Node at build time and in WASM at query time — so the vectors
+always line up. The full manual is ~48 MB raw and ~5 MB gzipped. Swapping to a
+real embedding model means running it on both sides; the builder is otherwise
+embedder-agnostic.
+
+---
+
+## 9. Error handling
 
 Every failure is a typed exception under one base
 ([`ImporterException`](../app/Docs/Exceptions/ImporterException.php)), so callers
@@ -279,7 +322,7 @@ can catch the whole family or a specific case:
 
 ---
 
-## 9. Testing strategy
+## 10. Testing strategy
 
 Tests never clone `php/doc-en`; they run against small fixtures in
 [`tests/Fixtures/xml`](../tests/Fixtures/xml) — one per document type, plus an
@@ -288,7 +331,12 @@ unknown and a deliberately malformed file. Coverage spans every stage:
 - **Unit** — finder, loader, classifier, registry, `DocumentType`, and the
   `ImporterService` orchestration (real stages + a `FakeDocumentParser` + an
   in-memory repository).
-- **Feature** — the Eloquent repository and a full pipeline run into SQLite.
+- **Feature** — the Eloquent repository, a full pipeline run into SQLite, the
+  search export, and the `/manual-search.inlay` route.
+- **End-to-end** — Playwright (`tests/e2e`) drives the real browser search: the
+  WASM engine and index load, the input is taken over, and hybrid retrieval
+  ranks the matching page. Target a deployed site with
+  `E2E_BASE_URL=https://… npx playwright test`.
 
 The `FakeDocumentParser` and `InMemoryDocsPageRepository` shipped in
 [`app/Docs/Testing`](../app/Docs/Testing) let downstream applications test their
@@ -297,17 +345,17 @@ the real parsers exist.
 
 ---
 
-## 10. What's deliberately deferred
+## 11. What's deliberately deferred
 
 These are designed-for but **not** implemented in this PR:
 
 - **Renderers** — `DocumentRenderer` contract exists; Markdown / HTML / JSON /
   LLM-context implementations drop into `Renderer/` and resolve by format.
-- **Search indexing** — a `DocPageDTO` is already a flat, indexable shape; a
-  Scout/Meilisearch indexer consumes the repository output.
+- **Real embeddings** — the browser index currently uses InlaySQL's built-in
+  lexical embedder; a semantic model would run on both sides (build + browser).
 - **Incremental git sync** — `XmlFileFinder` is an interface precisely so a
   changed-files-only finder can replace the recursive one.
-- **AI summaries / embeddings, version comparison, the Livewire frontend.**
+- **AI summaries / version comparison, the Livewire frontend.**
 
 None of these require reshaping the pipeline — they attach at the seams the
 contracts already define.
