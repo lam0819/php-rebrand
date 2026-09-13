@@ -64,19 +64,43 @@ function escapeHtml(value) {
   ));
 }
 
+function itemHtml(r) {
+  const desc = r.purpose ? `<span class="sr-desc">${escapeHtml(r.purpose)}</span>` : '';
+  return `<a class="sr-item" href="/manual/${encodeURIComponent(r.slug)}" wire:navigate>` +
+    `<span class="sr-kind" title="${escapeHtml(r.type)}">${escapeHtml(categoryLabel(r.type))}</span>` +
+    `<span class="sr-name">${escapeHtml(r.title)}</span>${desc}</a>`;
+}
+
 function render(container, results) {
   if (results.length === 0) {
     container.innerHTML = '<div class="sr-empty">No matches.</div>';
-  } else {
-    container.innerHTML = results
-      .map((r) => {
-        const desc = r.purpose ? `<span class="sr-desc">${escapeHtml(r.purpose)}</span>` : '';
-        return `<a class="sr-item" href="/manual/${encodeURIComponent(r.slug)}" wire:navigate>` +
-          `<span class="sr-kind" title="${escapeHtml(r.type)}">${escapeHtml(categoryLabel(r.type))}</span>` +
-          `<span class="sr-name">${escapeHtml(r.title)}</span>${desc}</a>`;
-      })
-      .join('');
+    container.hidden = false;
+    container.classList.add('show');
+    return;
   }
+
+  // Preserve relevance order: groups appear by their best-ranked hit, and the
+  // hits inside each group keep the fused ranking.
+  const groups = new Map();
+  for (const r of results) {
+    const label = categoryLabel(r.type);
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(r);
+  }
+
+  // Group headers only earn their space when there is more than one category.
+  if (groups.size === 1) {
+    container.innerHTML = results.map(itemHtml).join('');
+  } else {
+    let html = '';
+    for (const [label, items] of groups) {
+      html += `<div class="sr-group"><span class="sr-group-label">${escapeHtml(label)}</span>` +
+        `<span class="sr-group-count">${items.length}</span></div>`;
+      html += items.map(itemHtml).join('');
+    }
+    container.innerHTML = html;
+  }
+
   container.hidden = false;
   container.classList.add('show');
 }

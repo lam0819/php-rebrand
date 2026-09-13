@@ -180,6 +180,11 @@ h1, h2, h3, h4 { text-wrap: balance; }
 .sr-item .sr-desc { color: var(--muted); font-size: 13px; margin-left: auto; text-align: right;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 48%; }
 .sr-empty { padding: 20px; text-align: center; color: var(--muted); font-size: 14px; }
+.sr-group { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 10px 14px 4px; }
+.sr-group:not(:first-child) { margin-top: 6px; border-top: 1px solid var(--border); padding-top: 12px; }
+.sr-group-label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--muted); }
+.sr-group-count { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
 
 /* In-browser WASM search takes over the dropdown once its engine is ready. */
 .search-wasm-results[hidden] { display: none !important; }

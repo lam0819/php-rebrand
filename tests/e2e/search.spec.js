@@ -24,6 +24,23 @@ test('browser search returns ranked manual pages', async ({ page }) => {
   await expect(first).toHaveAttribute('href', /\/manual\/reference-strings-functions-str-replace/);
 });
 
+test('browser search groups results by category', async ({ page }) => {
+  await page.goto('/');
+
+  const root = page.locator('[data-search-root]');
+  await root.locator('[data-search]').click();
+  // "install" spans manual guides and function pages.
+  await root.locator('[data-search]').fill('install');
+
+  const results = root.locator('[data-search-wasm-results]');
+  await expect(results).toBeVisible({ timeout: 45_000 });
+
+  const labels = results.locator('.sr-group-label');
+  const names = await labels.allTextContents();
+  expect(names.length).toBeGreaterThan(1);
+  expect(names).toContain('Guide');
+});
+
 test('browser search resolves a function name typed before the engine loads', async ({ page }) => {
   await page.goto('/');
 
